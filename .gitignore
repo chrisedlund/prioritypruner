@@ -1,0 +1,9 @@
+# .gitignore for code directory (affects content in this directory and in all subdirectories)
+
+# Ignore Java class files.
+*.class
+SNPfinder/bin
+
+
+# Ignore specific mac OS X files.
+.DS_Store
