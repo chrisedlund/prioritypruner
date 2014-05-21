@@ -23,7 +23,14 @@ THE SOFTWARE.
 
 package edu.usc.scrc.PriorityPruner;
 
-import java.io.*;
+
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 
 /**
@@ -67,15 +74,19 @@ public class TPlink extends Genotypes {
 			SnpListFile snpListFile) throws PriorityPrunerException {
 		super();
 
-		// checks if any of the remove, keep or keep_random options has been
-		// chosen
-		if (options.getKeep() != null || options.getRemove() != null
-				|| options.getKeepPercentage() != -1) {
-			parseKeepRemove();
-		}
+		LogWriter.getLogger().info("Reading pedigree information from [ " + filePathTFam + " ]");
+		
 
 		// initiates tfam parsing
 		parseTfam(filePathTFam);
+		
+		// checks if any of the remove, keep or keep_random options has been
+		// chosen
+		if (options.getKeep() != null || options.getRemove() != null
+				|| options.getKeepPercentage() > 0) {
+			parseKeepRemove();
+		}
+		
 
 		// sets the keep-flag in Individual-objects according
 		// to keep-/remove-file
@@ -116,14 +127,14 @@ public class TPlink extends Genotypes {
 			while (reader.ready()) {
 				String[] splitString = reader.readLine().split(delim);
 
-				if (splitString.length < 2) {
+				if (splitString.length != 2) {
 					reader.close();
 					throw new PriorityPrunerException(
 							"Invalid number of columns specified in file \""
 									+ filePath
-									+ "\" at line: "
+									+ "\" at line "
 									+ (index)
-									+ "\nExpected: 2 (Family ID, Individual ID) Found: "
+									+ ". Expected 2 columns but found: "
 									+ splitString.length + ".");
 				}
 				String famID = new String(splitString[0]);
@@ -157,7 +168,9 @@ public class TPlink extends Genotypes {
 	 */
 	private void setKeepRemove() {
 		int index = 0;
-
+		int numKept = 0;
+		int numRemoved = 0;
+		
 		// loops through all individuals to set their keep-flags, and save
 		// gender and index
 		for (Individual individual : individuals) {
@@ -165,8 +178,9 @@ public class TPlink extends Genotypes {
 				if (keepRemoveHashSet.contains(individual.getFamilyID() + " "
 						+ individual.getIndividualID())) {
 					individual.setKeep(true);
-					subjectSexes.add(individual.getGender());
-					founderIndices.add(index);
+					numKept++;
+					//subjectSexes.add(individual.getGender());
+					//founderIndices.add(index);
 					index++;
 				} else {
 					individual.setKeep(false);
@@ -175,10 +189,11 @@ public class TPlink extends Genotypes {
 				if (keepRemoveHashSet.contains(individual.getFamilyID() + " "
 						+ individual.getIndividualID())) {
 					individual.setKeep(false);
+					numRemoved++;
 				} else {
 					individual.setKeep(true);
-					subjectSexes.add(individual.getGender());
-					founderIndices.add(index);
+					//subjectSexes.add(individual.getGender());
+					//founderIndices.add(index);
 					index++;
 				}
 			} else if (keep_random) {
@@ -186,28 +201,49 @@ public class TPlink extends Genotypes {
 				index++;
 			} else {
 				individual.setKeep(true);
-				subjectSexes.add(individual.getGender());
-				founderIndices.add(index);
+				//subjectSexes.add(individual.getGender());
+				//founderIndices.add(index);
 				index++;
 			}
 		}
 
 		// chooses random individuals for the option keep_random
 		if (keep_random) {
-			int numKeep = Math
-					.round((float) (options.getKeepPercentage() * index));
-			int founderIndex = 0;
+			
+			final class RandomInd implements Comparable<RandomInd>{
+				public Individual individual;
+				public Double random;
+				public RandomInd(Individual individual, double random){this.individual = individual; this.random = random;}
+				@Override
+				public int compareTo(RandomInd arg0) {return this.random.compareTo(arg0.random);}
+			}
+			
+			ArrayList<RandomInd> randomIndList = new ArrayList<RandomInd>();
+			for (Individual individual: individuals){
+				randomIndList.add(new RandomInd(individual, new Double(Math.random())));
+			}
+			Collections.sort(randomIndList);
+			
+			int numKeep = Math.round((float) (options.getKeepPercentage() * index));
 
 			for (int i = 0; i < numKeep; i++) {
-				int random = (int) (Math.random() * index);
-				while (individuals.get(random).getKeep() == true) {
-					random = (int) (Math.random() * index);
-				}
-				individuals.get(random).setKeep(true);
-				subjectSexes.add(individuals.get(random).getGender());
-				founderIndices.add(founderIndex);
-				founderIndex++;
+				randomIndList.get(i).individual.setKeep(true);
+				numKept++;
 			}
+		}
+		
+		for (Individual ind: individuals){
+			if (ind.getKeep()){
+				keptFounders.add(ind);
+			}
+		}
+		
+		if (keep){
+			LogWriter.getLogger().info("Reading individuals to keep [ " + options.getKeep() + " ] ... " + numKept + " read");
+		}else if (remove){
+			LogWriter.getLogger().info("Reading individuals to remove [ " + options.getRemove() + " ] ... " + numRemoved + " read");
+		}else if (keep_random){
+			LogWriter.getLogger().info("Selecting " + numKept + " random individuals to keep");
 		}
 	}
 
@@ -224,60 +260,43 @@ public class TPlink extends Genotypes {
 	 */
 	private void parseTped(String filePath, SnpListFile snpListFile)
 			throws PriorityPrunerException {
-		BufferedReader reader;
+		BufferedReader reader = null;
+		HashMap<String,Integer> uniqueSnpNameHash = new HashMap<String,Integer>();
+		
+		int notFoundInSnpInputTable = 0;
 		try {
 			reader = new BufferedReader(new FileReader(filePath));
-			int index = 0;
+			int line = 1;
 
+			LogWriter.getLogger().info("Reading genotypes from [ " + filePath + " ]");
+			
+			if (CommandLineOptions.getInstance().getChr() != null){
+				LogWriter.getLogger().info("Extracting SNPs from chromosome " + CommandLineOptions.getInstance().getChr());
+			}
 			while (reader.ready()) {
 				String[] splitString = reader.readLine().split(delim);
-				// checks that no double tabs or spaces been entered in tped
-				// file
+				// checks that no double tabs or spaces been entered in tped file
 				for (String str : splitString) {
-					if (str.equals("")) {
-						reader.close();
+					if (str.length() == 0) {
 						throw new PriorityPrunerException(
-								"Invalid formatting in file \""
-										+ filePath
-										+ "\" at line: "
-										+ (index + 1)
-										+ "\nPlease check that values are separated by single space or tab characters only.");
+								"Problem with line " + line + " in [ " + filePath + " ]\r\n"
+										+ "Ensure values are separated by a single space or tab character.");
 					}
 				}
-
-				// checks that number of columns in tped file is not less than
-				// the required four
-				if (splitString.length < 4) {
-					reader.close();
+				
+				// checks that the number of columns is what we expect
+				int expectedColumns = individuals.size() * 2 + 4;
+				if (splitString.length != expectedColumns) {
 					throw new PriorityPrunerException(
-							"Missing required columns (\"Chromsome\", \"SNP Name\", \"Distance\", \"Position\") in file \""
-									+ filePath
-									+ "\" (at line: "
-									+ (index + 1)
-									+ ").");
-				}
-
-				// checks that the number of genotypes in tped file matches
-				// number of individuals
-				if (((splitString.length - 4) / 2 != individuals.size())) {
-					reader.close();
-					throw new PriorityPrunerException(
-							"The number of individuals and genotype data are not matching: \nNumber of individuals provided in tfam file: "
-									+ individuals.size()
-									+ "\nNumber of genotypes provided in \""
-									+ filePath
-									+ "\" : "
-									+ (splitString.length - 4)
-									/ 2
-									+ " (at line: " + (index + 1) + ").");
+							"Problem with line " + line + " in [ " + filePath + " ]\r\n"
+									+ "Expecting 4 + 2 * " + individuals.size() + " = " + expectedColumns
+									+ " columns, but found " + splitString.length);
 				}
 
 				// stores chromosome X as "23"
 				String chr = new String(splitString[0]);
 				if (chr.toUpperCase().equals("X")
 						|| chr.toUpperCase().equals("CHRX")
-						|| chr.toUpperCase().equals("CHR_X")
-						|| chr.toUpperCase().equals("X_NONPAR")
 						|| chr.toUpperCase().equals("23")) {
 					chr = "23";
 				}
@@ -291,23 +310,32 @@ public class TPlink extends Genotypes {
 						|| chr.toUpperCase().equals(
 								CommandLineOptions.getInstance().getChr()
 										.toUpperCase())) {
+					
 					String snpName = new String(splitString[1]);
+					
+					//make sure there are no duplicate snps
+					if (uniqueSnpNameHash.containsKey(snpName)){
+						throw new PriorityPrunerException("Duplicate SNP found in tped file: " + snpName);
+					}else{
+						uniqueSnpNameHash.put(snpName, 0);
+					}
+					
 					int pos;
 					try {
 						pos = Integer.parseInt(new String(splitString[3]));
+						if (pos < 1){
+							throw new NumberFormatException();
+						}
 					} catch (NumberFormatException e) {
-						reader.close();
 						throw new PriorityPrunerException(
-								"Invalid value: \""
+								"Problem with line " + line + " in [ " + filePath + " ]\r\n"
+								+ "Invalid value: \""
 										+ splitString[3]
-										+ "\", specified for base pair position in file \""
-										+ filePath + "\" at line: "
-										+ (index + 1)
-										+ ". \nInteger value expected.");
+										+ "\", specified for position in column 4.");
 					}
 					String allele1 = "0";
 					String allele2 = "0";
-					String[] genotypes = new String[2 * founderIndices.size()];
+					String[] genotypes = new String[2 * keptFounders.size()];
 					int individualIndex = 0;
 					int genotypesIndex = 0;
 
@@ -317,7 +345,8 @@ public class TPlink extends Genotypes {
 					// in a String-array which will be saved together with other
 					// info in a SnpGenotypes-object.
 					for (int k = 4; k < splitString.length; k += 2) {
-						if (individuals.get(individualIndex).getKeep()) {
+						Individual individual = individuals.get(individualIndex);
+						if (individual.getKeep()) {
 
 							for (int j = 0; j < 2; j++) {
 								if (allele1.equals("0")) {
@@ -331,17 +360,10 @@ public class TPlink extends Genotypes {
 										&& !splitString[k + j].equals("0")) {
 									reader.close();
 									throw new PriorityPrunerException(
-											"To many types of alleles provided in file \""
-													+ filePath
-													+ "\" at line: "
-													+ (index + 1)
-													+ "\nFound: \""
-													+ allele1
-													+ "\", \""
-													+ allele2
-													+ "\", \""
-													+ splitString[k + j]
-													+ "\"\nA maximum of 2 alleles are allowed.");
+											"Locus " + snpName + " has >2 alleles:\r\n"
+													+ "individual " + individual.getFamilyID() + " " + individual.getIndividualID() 
+													+ " has genotype [ " + splitString[k] + " " + splitString[k + 1] + " ]\r\n"
+													+ "but we've already seen [ " + allele1 + " ] and [ " + allele2 + " ]");
 								}
 								genotypes[genotypesIndex] = new String(
 										splitString[k + j]);
@@ -364,18 +386,33 @@ public class TPlink extends Genotypes {
 						snpInfo.setSnpGenotypes(snpGenotypesLocal);
 						snpInfo.setInTped(true);
 						snpGenotypes.add(snpGenotypesLocal);
+					}else{
+						notFoundInSnpInputTable++;
 					}
 				}
-				index++;
+				line++;
 				splitString = null;
 			}
-			reader.close();
+			
+			
+			LogWriter.getLogger().info("Excluding " + notFoundInSnpInputTable + " SNPs missing from [ " + snpListFile.getFilePath() + " ]");
+			LogWriter.getLogger().info(snpGenotypes.size() + " (of " + (line - 1) + ") SNPs to be included from [ " + filePath + " ]");
+			
 		} catch (FileNotFoundException e) {
 			throw new PriorityPrunerException("Could not open file: "
 					+ e.getMessage());
 		} catch (IOException e) {
 			throw new PriorityPrunerException("Could not open file: "
 					+ e.getMessage());
+		} catch (PriorityPrunerException e){
+			throw e;
+		} finally{
+			try {
+				if (reader != null){
+					reader.close();
+				}
+			} catch (IOException e) {
+			}
 		}
 	}
 
@@ -389,11 +426,13 @@ public class TPlink extends Genotypes {
 	 *             if problem is encountered during parsing
 	 */
 	private void parseTfam(String filePath) throws PriorityPrunerException {
-		BufferedReader reader;
+		BufferedReader reader = null;
 
 		try {
 			reader = new BufferedReader(new FileReader(filePath));
-			int index = 0;
+			int line = 1;
+			int maleCount = 0;
+			int femaleCount = 0;
 
 			while (reader.ready()) {
 				String[] splitString = reader.readLine().split(delim);
@@ -401,49 +440,33 @@ public class TPlink extends Genotypes {
 				// file
 				for (String str : splitString) {
 					if (str.equals("")) {
-						reader.close();
 						throw new PriorityPrunerException(
-								"Invalid formatting in file \""
-										+ filePath
-										+ "\" at line: "
-										+ (index + 1)
-										+ "\nPlease check that values are separated by single space or tab characters only.");
+								"Problem with line " + line + " in [ " + filePath + " ]\r\n"
+										+ "Ensure values are separated by a single space or tab character.");
 					}
 				}
 				// checks that correct number of columns are provided
 				if (splitString.length != 6) {
-					reader.close();
 					throw new PriorityPrunerException(
-							"Invalid number of columns specified in file \""
-									+ filePath
-									+ "\" at line: "
-									+ (index + 1)
-									+ ".\nExpected: 6 (Family ID, Individual ID, Paternal ID, Maternal ID, Sex [1=male; 2=female], Phenotype). \nFound: "
-									+ splitString.length + ".");
+							"Problem with line " + line + " in [ " + filePath + " ]\r\n"
+									+ "Expecting 6 columns, but found " + splitString.length);
 				}
 				// checks that gender information is correct, it has to be
 				// specified
 				if (!splitString[4].equals("1") && !splitString[4].equals("2")) {
-					reader.close();
 					throw new PriorityPrunerException(
-							"Invalid value specified for 'gender': "
-									+ splitString[4]
-									+ ", at line: "
-									+ (index + 1)
-									+ " in file \""
-									+ filePath
-									+ "\". \nIf male: '1' expected, if female: '2' expected.");
+							"Problem with line " + line + " in [ " + filePath + " ]\r\n"
+									+ "Individual " + splitString[0] + " " + splitString[1] + " has invalid sex code " + splitString[4] 
+								    + ". Must be either 1 for male or 2 for female.");
 				}
+				
 				// checks that only founders are provided
 				if (!splitString[2].equals("0") || !splitString[3].equals("0")) {
-					reader.close();
 					throw new PriorityPrunerException(
-							"Only founders allowed, please remove/update information about individual at line: "
-									+ (index + 1)
-									+ " in file \""
-									+ filePath
-									+ "\".");
+							"Problem with line " + line + " in [ " + filePath + " ]\r\n"
+									+ "Individual " + splitString[0] + " " + splitString[1] + " is a non-founder but only founders are allowed. ");
 				}
+				
 				// checks that no duplicates get entered
 				if (!individualHashSet
 						.contains((splitString[0] + " " + splitString[1]))) {
@@ -455,24 +478,36 @@ public class TPlink extends Genotypes {
 									splitString[3]), new String(splitString[4]));
 					individualHashSet.add(famID + " " + indID);
 					individuals.add(individual);
-					index++;
+					if (splitString[4].equals("1")){
+						maleCount++;
+					}else if (splitString[4].equals("2")){
+						femaleCount++;
+					}
+					line++;
 				} else {
 					reader.close();
 					throw new PriorityPrunerException(
-							"Duplicate individual data found in file \""
-									+ filePath
-									+ "\" at line: "
-									+ (index + 1)
-									+ "\nPlease remove data, update tped file and rerun program.");
+							"Duplicate individual found: [ " + splitString[0] + " " + splitString[1] + " ]");
 				}
 			}
-			reader.close();
+			LogWriter.getLogger().info(individuals.size() + " individuals read from from [ " + filePath + " ]");
+			LogWriter.getLogger().info(maleCount + " males, " + femaleCount + " females, and 0 of unspecified sex");
+			
 		} catch (FileNotFoundException e) {
 			throw new PriorityPrunerException("Could not open file: "
 					+ e.getMessage());
 		} catch (IOException e) {
 			throw new PriorityPrunerException("Could not open file: "
 					+ e.getMessage());
+		} catch (PriorityPrunerException e){
+			throw e;
+		} finally{
+			try {
+				if (reader != null){
+					reader.close();
+				}
+			} catch (IOException e) {
+			}
 		}
 	}
 }

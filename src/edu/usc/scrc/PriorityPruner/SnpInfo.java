@@ -41,11 +41,11 @@ public class SnpInfo implements Comparable<SnpInfo> {
 	// design score for this SNP provided in the SNP input file
 	private double designScore=Double.MAX_VALUE;
 	private boolean forceInclude = false;
-	private int numBeadTypes;
+	//private int numBeadTypes;
 	private boolean tagged = false;
 	private boolean picked = false;
 	private int pickOrder = -1;
-	private boolean pseudoAutosomal = false;
+	private boolean chrX = false;
 	private double score;
 	private int sortedByPosIndex;
 	private boolean inTped = false;
@@ -75,14 +75,16 @@ public class SnpInfo implements Comparable<SnpInfo> {
 	 *            associated number of bead types as defined in SNP input file
 	 * @param forceInclude
 	 *            flag showing whether or not to force include this SNP
+	 * @param designScore
+	 *            design score
 	 * @param metrics
 	 *            metric weights defined for this SNP in SNP input file
 	 * @throws PriorityPrunerException
 	 *             if unable to retrieve data from CommandLineOptions
 	 */
 	public SnpInfo(String snpName, String chr, int pos, String allele1,
-			String allele2, double pValue, int numAssays,
-			boolean forceInclude, double[] metrics)
+			String allele2, double pValue,
+			boolean forceInclude, double designScore, double[] metrics)
 			throws PriorityPrunerException {
 		this.snpName = snpName;
 		this.chr = chr;
@@ -91,13 +93,16 @@ public class SnpInfo implements Comparable<SnpInfo> {
 		this.allele1 = allele1;
 		this.allele2 = allele2;
 		this.pValue = pValue;
-		this.numBeadTypes = numAssays;
+		//this.numBeadTypes = numAssays;
 		this.forceInclude = forceInclude;
+		this.designScore = designScore;
 
-		if (chr.toUpperCase().equals("X_PAR1")
-				|| chr.toUpperCase().equals("X_PAR2")) {
-			this.pseudoAutosomal = true;
+		if (chr.toUpperCase().equals("X")
+				|| chr.toUpperCase().equals("CHRX")
+				|| chr.toUpperCase().equals("23")) {
+			this.chrX = true;
 		}
+		
 	}
 
 	/**
@@ -177,13 +182,13 @@ public class SnpInfo implements Comparable<SnpInfo> {
 		this.forceInclude = value;
 	}
 
-	public int getNumBeadTypes() {
-		return numBeadTypes;
-	}
-	
-	public void setNumBeadTypes(int value) {
-		this.numBeadTypes=value;
-	}
+//	public int getNumBeadTypes() {
+//		return numBeadTypes;
+//	}
+//	
+//	public void setNumBeadTypes(int value) {
+//		this.numBeadTypes=value;
+//	}
 
 	public boolean getTagged() {
 		return tagged;
@@ -207,10 +212,6 @@ public class SnpInfo implements Comparable<SnpInfo> {
 
 	public void setPickOrder(int pickOrder) {
 		this.pickOrder = pickOrder;
-	}
-
-	public boolean getPseudoAutosomal() {
-		return pseudoAutosomal;
 	}
 
 	public double getScore() {
@@ -258,5 +259,9 @@ public class SnpInfo implements Comparable<SnpInfo> {
 
 	public void setInTped(boolean inTped) {
 		this.inTped = inTped;
+	}
+	
+	public boolean isChrX() {
+		return chrX;
 	}
 }

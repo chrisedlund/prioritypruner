@@ -42,7 +42,7 @@ public class SnpGenotypes {
 	private double missingPercent;
 	private Byte minorAllele;
 	private Byte majorAllele;
-	private int numMendelianErrors;
+	//private int numMendelianErrors;
 	private double hwePvalue;
 	private boolean calculationDone = false;
 
@@ -109,8 +109,18 @@ public class SnpGenotypes {
 				String alleleB = genotypes[i + j + 1];
 				byteValue = (byte) (byteValue << 2);
 
-				// alleles are homozygous for allele 1
-				if (alleleA.equals(allele1) && alleleB.equals(allele1)) {
+				// either allele is missing, gets set to 00 as default by bit
+				// shifting
+				if (alleleA.equals("0") || alleleB.equals("0")){
+					
+					// if only one of the alleles is missing
+					if (!alleleA.equals(alleleB)){
+						throw new PriorityPrunerException("Invalid genotype: "
+								+ alleleA + alleleB + " found for locus "
+								+ this.getSnpName());
+					}
+				    // alleles are homozygous for allele 1
+				}else if (alleleA.equals(allele1) && alleleB.equals(allele1)) {
 					byteValue += (byte) (1);
 
 					// alleles are homozygous for allele 2
@@ -121,15 +131,10 @@ public class SnpGenotypes {
 				} else if ((alleleA.equals(allele1) && alleleB.equals(allele2))
 						|| (alleleA.equals(allele2) && alleleB.equals(allele1))) {
 					byteValue += (byte) (3);
-
-					// alleles are missing, gets set to 00 as default by bit
-					// shifting
-				} else if (alleleA.equals("0") && alleleB.equals("0")) {
 				} else {
 					throw new PriorityPrunerException("Invalid genotype: "
-							+ alleleA + alleleB + " found in SNP \""
-							+ this.getSnpName()
-							+ "\".\nPlease redefine this genotype.");
+							+ alleleA + alleleB + " found for locus "
+							+ this.getSnpName());
 				}
 			}
 			genotypesByte[byteIndex] = byteValue;
@@ -218,13 +223,13 @@ public class SnpGenotypes {
 		this.majorAllele = majorAllele;
 	}
 
-	public int getNumMendelianErrors() {
-		return numMendelianErrors;
-	}
-
-	public void setNumMendelianErrors(int numMendelianErrors) {
-		this.numMendelianErrors = numMendelianErrors;
-	}
+//	public int getNumMendelianErrors() {
+//		return numMendelianErrors;
+//	}
+//
+//	public void setNumMendelianErrors(int numMendelianErrors) {
+//		this.numMendelianErrors = numMendelianErrors;
+//	}
 
 	public double getHwePvalue() {
 		return hwePvalue;
@@ -241,4 +246,47 @@ public class SnpGenotypes {
 	public void setCalculationDone() {
 		this.calculationDone = true;
 	}
+	
+	public byte getByteGenotype(int sampleIndex){
+		int compressedIndex = sampleIndex / 4;
+		int offset = (3 - (sampleIndex % 4)) * 2;
+		return (byte) ( (genotypes[compressedIndex] >> offset) & 3);
+	}
+	
+	public byte getIntegerA1(int sampleIndex){
+		int compressedIndex = sampleIndex / 4;
+		int offset = (3 - (sampleIndex % 4)) * 2;
+		byte genotype = (byte) ( (genotypes[compressedIndex] >> offset) & 3);
+		
+		if (genotype == 0){
+			return 0;
+		}else if (genotype == 1){
+			return 1;
+		}else if (genotype == 2){
+			return 2;
+		}else if (genotype == 3){
+			return 1;
+		}else{
+			return 0;
+		}
+	}
+	
+	public byte getIntegerA2(int sampleIndex){
+		int compressedIndex = sampleIndex / 4;
+		int offset = (3 - (sampleIndex % 4)) * 2;
+		byte genotype = (byte) ( (genotypes[compressedIndex] >> offset) & 3);
+		
+		if (genotype == 0){
+			return 0;
+		}else if (genotype == 1){
+			return 1;
+		}else if (genotype == 2){
+			return 2;
+		}else if (genotype == 3){
+			return 2;
+		}else{
+			return 0;
+		}
+	}
+
 }

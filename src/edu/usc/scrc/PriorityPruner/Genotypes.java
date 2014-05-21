@@ -34,13 +34,16 @@ public class Genotypes {
 	// SNPs stored as SnpGenotypes-object
 	protected ArrayList<SnpGenotypes> snpGenotypes = new ArrayList<SnpGenotypes>();
 	// gender of chosen individuals
-	protected ArrayList<String> subjectSexes = new ArrayList<String>();
+	//protected ArrayList<String> subjectSexes = new ArrayList<String>();
 	// all individuals, each object contains a flag indicating if it's chosen or
 	// not
 	protected ArrayList<Individual> individuals = new ArrayList<Individual>();
 	// since we only support founders at the moment, this is basically just an
 	// index over chosen individuals
-	protected ArrayList<Integer> founderIndices = new ArrayList<Integer>();
+	//protected ArrayList<Integer> founderIndices = new ArrayList<Integer>();
+	
+	// array of kept founder individuals
+	protected ArrayList<Individual> keptFounders = new ArrayList<Individual>();
 
 	// public getters and setter for private fields of this class
 
@@ -48,15 +51,19 @@ public class Genotypes {
 		return snpGenotypes;
 	}
 
-	public ArrayList<String> getSubjectSexes() {
-		return subjectSexes;
-	}
+//	public ArrayList<String> getSubjectSexes() {
+//		return subjectSexes;
+//	}
 
 	public ArrayList<Individual> getIndividuals() {
 		return individuals;
 	}
 
-	public ArrayList<Integer> getFounderIndices() {
-		return founderIndices;
+//	public ArrayList<Integer> getFounderIndices() {
+//		return founderIndices;
+//	}
+	
+	public ArrayList<Individual> getKeptFounders(){
+		return keptFounders;
 	}
 }

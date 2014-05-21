@@ -23,8 +23,16 @@ THE SOFTWARE.
 
 package edu.usc.scrc.PriorityPruner;
 
-import java.io.*;
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Hashtable;
+
 
 /**
  * This class handles both the parsing of the SNP input file, as well as the
@@ -32,23 +40,37 @@ import java.util.*;
  */
 public class SnpListFile {
 
+	// path of the file
 	private String filePath;
+	
 	// number of metrics defined in command line
 	private int numMetrics;
+	
+	// ArrayList of SnpInfo objects contained in the file, in the same order as the file
 	private ArrayList<SnpInfo> snps = new ArrayList<SnpInfo>();
+	
+	// ArrayList of SnpInfo objects contained in the file, sorted by chr, pos
 	private ArrayList<SnpInfo> snpsSortedByChrPos = new ArrayList<SnpInfo>();
-	private ArrayList<String> chromsomes = new ArrayList<String>();
-	// hashtable with SnpInfo-objects, which allows easy look up
-	private Hashtable<String, ArrayList<SnpInfo>> snpNameToSnpInfoListHash = new Hashtable<String, ArrayList<SnpInfo>>();
-	private BufferedReader reader;
+	
+	// HashSet of chromosomes contained in the file
+	private HashSet<String> chromsomeHash = new HashSet<String>();
+	
+	// Hashtable with SnpInfo-objects, which allows easy look up
+	private Hashtable<String, ArrayList<SnpInfo>> snpNameToSnpInfoListHash = 
+			new Hashtable<String, ArrayList<SnpInfo>>();
+	
+	// file reader
+	//private BufferedReader reader;
+	
 	// allows access to options entered in the command line
 	private CommandLineOptions options = CommandLineOptions.getInstance();
+	
 	// stores information from SNP input file about which SNPs that should be
 	// force included
-	private HashSet<String> forceIncludeHashSet = new HashSet<String>();
+	//private HashSet<String> forceIncludeHashSet = new HashSet<String>();
+	
 	// splitting regex for input files that allows single tabs or spaces
 	private String delim = "[\\s|\\t]";
-	private int designScorePlacement = -1;
 
 	/**
 	 * Constructor for SnpListFile. Initiates parsing of the SNP input file, if
@@ -67,50 +89,27 @@ public class SnpListFile {
 		this.filePath = filePath;
 		this.numMetrics = numMetrics;
 		parseFile();
-		if (options.getForceIncludeFilePath() != null) {
-			parseForceInclude();
-			setForceInclude();
-		}
+//		if (options.getForceIncludeFilePath() != null) {
+//			parseForceInclude();
+//			setForceInclude();
+//		}
 		sortSnps();
 	}
 
-	/**
-	 * Sorts the parsed SNPs according to the parameters defined by the user in
-	 * command line.
-	 */
-	private void sortSnps() {
-		// sort by force include then p-value, if a specific chromosome is
-		// selected
-		if (options.getSortByForceIncludeAndPValue()
-				&& options.getChr() != null) {
-			Collections.sort(snps, new ForceIncludePValueSorter());
-			// sort by p-value then name, if a specific chromosome is selected
-		} else if (!options.getSortByForceIncludeAndPValue()
-				&& options.getChr() != null) {
-			Collections.sort(snps);
-		}
-		// sort by force include, then by chromosome and p-value, if all
-		// chromosomes are selected
-		if (options.getSortByForceIncludeAndPValue()
-				&& options.getChr() == null) {
-			Collections.sort(snps, new FIChrPValueSorter());
-			// sort by chromosome and then p-value, if all chromosomes are
-			// selected
-		} else if (!options.getSortByForceIncludeAndPValue()
-				&& options.getChr() == null) {
-			Collections.sort(snps, new ChrPValueSorter());
-		}
-
-		for (SnpInfo snpInfo : snps) {
-			snpsSortedByChrPos.add(snpInfo);
-		}
-		// sort by chromosome then position
-		Collections.sort(snpsSortedByChrPos, new PosSorter());
-		for (int i = 0; i < snpsSortedByChrPos.size(); i++) {
-			snpsSortedByChrPos.get(i).setSortedByPosIndex(i);
-		}
+	// public access to private fields 
+	public ArrayList<SnpInfo> getSnps() {
+		return snps;
 	}
 
+	public ArrayList<SnpInfo> getSnpsSortedByChrPos() {
+		return snpsSortedByChrPos;
+	}
+
+
+	public String getFilePath(){
+		return this.filePath;
+	}
+	
 	/**
 	 * Parses the SNP input file, checks that values are valid and if they are,
 	 * creates a SnpInfo-object with these as parameters. The combination of SNP
@@ -123,310 +122,272 @@ public class SnpListFile {
 	 *             if problems are encountered during parsing
 	 */
 	private void parseFile() throws PriorityPrunerException {
+		
+		BufferedReader reader = null;
+		int lineNum = 1;
+		String line;
+		
 		try {
 			reader = new BufferedReader(new FileReader(filePath));
-			int lineNum = 1;
 			String[] header = reader.readLine().split(delim);
 
 			// checks that necessary columns are provided
-			if (!header[0].toLowerCase().equals("snpname")
-					|| !header[1].toLowerCase().equals("chr")
-					|| !header[2].toLowerCase().equals("pos")
-					|| !header[3].toLowerCase().equals("a1")
-					|| !header[4].toLowerCase().equals("a2")
-					|| !header[5].toLowerCase().equals("p")
-					|| !header[6].toLowerCase().equals("num_assays")
-					|| !header[7].toLowerCase().equals("force_include")) {
+			if (header.length < 8 || !header[0].equals("name")
+					|| !header[1].equals("chr")
+					|| !header[2].equals("pos")
+					|| !header[3].equals("a1")
+					|| !header[4].equals("a2")
+					|| !header[5].equals("p")
+					|| !header[6].equals("forceSelect")
+					|| !header[7].equals("designScore")) {
 				throw new PriorityPrunerException(
-						"Invalid column headers in SNP input file. First 8 columns should equal: \"snpname\", \"chr\", \"pos\", \"a1\", \"a2\", \"p\", \"num_assays\", \"force_include\".\nMake sure columns are separated by only one tab or space character.");
+						"The first 9 columns in the SNP Input Table should " +
+						" equal: \"name\", \"chr\", \"pos\", \"a1\", \"a2\", \"p\", " + 
+						"\"forceSelect\", \"designScore\", separated by tabs " + 
+						" or spaces. Note that column names are case-sensitive.");
 			}
 
 			ArrayList<MetricNamePos> metricNames = new ArrayList<MetricNamePos>();
+			
+			// get metric names listed in the SNP Input Table, and makes sure no column name
+			//  is duplicated
+			Hashtable<String, Integer> columnNamesToIndexHash = new Hashtable<String, Integer>();
+			Hashtable<String, Integer> metricNamesToIndexHash = new Hashtable<String, Integer>();
+			for (int i = 0; i < header.length; i++) {
+				String columnName = header[i];
+				if (!columnNamesToIndexHash.containsKey(columnName)){
+					columnNamesToIndexHash.put(columnName, i);
+				}else{
+					throw new PriorityPrunerException("The column name '" + columnName + "' " +
+						" is duplicated in the SNP Input Table.");
+				}
+				if (i >= 8){
+					metricNamesToIndexHash.put(columnName, i);
+				}
+			}
+			
 			// loops through all Metric-objects (the metrics specified in
 			// the command line) and saves their name and position in the SNP
 			// input file, to metricNames.
 			// If gone through whole header in SNP input file without finding
 			// current metric, an exception will get thrown
-			outerLoop: for (int j = 0; j < options.getMetrics().size(); j++) {
-				for (int i = 8; i < header.length; i++) {
-					if (options.getMetrics().get(j).getName()
-							.equals(header[i])) {
-						metricNames.add(new MetricNamePos(header[i], i));
-						continue outerLoop;
-					}
-				}
-				throw new PriorityPrunerException(
-						"Specified metric \""
-								+ options.getMetrics().get(j).getName()
-								+ "\" is missing in file \""
-								+ filePath
-								+ "\". \nPlease add it to the file or respecify your options in command line.");
-			}
-
-			// loops through header to check for duplicated metrics (column
-			// names)
-			for (int i = 0; i < header.length; i++) {
-				for (int j = 0; j < header.length; j++) {
-					if (header[i].equals(header[j]) && i != j) {
-						throw new PriorityPrunerException(
-								"Duplicated column name \""
-										+ header[i]
-										+ "\" in file \""
-										+ filePath
-										+ "\". \nPlease remove/rename incorrect column(s) and rerun program.");
-					}
+			for (int j = 0; j < options.getMetrics().size(); j++) {
+				String metric = options.getMetrics().get(j).getName();
+				if (columnNamesToIndexHash.containsKey(metric)){
+					int index = columnNamesToIndexHash.get(metric);
+					metricNames.add(new MetricNamePos(metric, index));
+				}else{
+					throw new PriorityPrunerException(
+						"The metric column '" + options.getMetrics().get(j).getName() +
+					"' does not exist in the SNP Input Table. Note that column names are case-sensitive.");
 				}
 			}
 
-			// loops through header to be able to warn if metric provided in
-			// SNP input file isn't in command line
-			outerLoop: for (int i = 8; i < header.length; i++) {
-				if (header[i].equals("design_score")) {
-					designScorePlacement = i;
-					continue outerLoop;
-				}
-				for (int j = 0; j < options.getMetrics().size(); j++) {
-					if (header[i]
-							.equals(options.getMetrics().get(j).getName())) {
-						continue outerLoop;
-					}
-				}
-				LogWriter
-						.getLogger()
-						.warn("\nMetric \""
-								+ header[i]
-								+ "\" is specified in \""
-								+ filePath
-								+ "\" but not in command line. \nTo use this metric, please specify it in command line. For more information about available program options type \"-h\".");
-			}
-			
-			if(designScorePlacement==-1&&(options.getAbsoluteMinDesignScore()!=0 || options.getMinDesignScore()!=0)){
-				LogWriter.getLogger().warn("\nThreshold value(s) for minimum design score and/or absolute minimum design score entered in command line \nwithout any design score data provided in the SNP input file. No design score filter could be applied.");
-			}
-			
 			// reads and parses every line in the SNP input file, and checks and
 			// stores this information
-			while (reader.ready()) {
-				String[] splitString = reader.readLine().split(delim);
+			while ((line = reader.readLine()) != null) {
+				String[] splitString = line.split(delim);
 				lineNum += 1;
-				// makes sure that at least the expected number of columns are
-				// present
-				if (splitString.length < (8 + numMetrics)) {
+				
+				// check that there are the expected number of columns
+				if (splitString.length != header.length) {
 					throw new PriorityPrunerException(
-							"Missing essential columns in \"" + filePath
-									+ "\". Expected " + (numMetrics + 8)
-									+ " columns, but found "
-									+ splitString.length + " on line "
-									+ lineNum
-									+ ".\nPlease update SNP input file.");
-				} else {
-					// makes sure that values aren't missing for chosen metrics
-					for (MetricNamePos metric : metricNames) {
-						try {
-							if (splitString[metric.getPos()].equals("")) {
-								throw new PriorityPrunerException(
-										"Missing values in the \""
-												+ metric.getName()
-												+ "\" column on line "
-												+ lineNum
-												+ " in \""
-												+ filePath
-												+ "\". \nPlease update your file or respecify the chosen metrics.");
-							}
-						} catch (ArrayIndexOutOfBoundsException e) {
-							throw new PriorityPrunerException(
-									"Missing values in the \""
-											+ metric.getName()
-											+ "\" column on line "
-											+ lineNum
-											+ " in \""
-											+ filePath
-											+ "\". \nPlease update your file or respecify the chosen metrics.");
-						}
-					}
-				}
-				// makes sure that information in mandatory columns isn't
-				// missing
-				for (int i = 0; i < 8; i++) {
-					if (splitString[i].equals("")) {
-						throw new PriorityPrunerException(
-								"Missing mandatory information on line "
-										+ lineNum
-										+ " in \""
-										+ filePath
-										+ "\""
-										+ ". \nPlease update your input file and rerun program.");
-					}
-				}
+						"On line " + lineNum + " of " + filePath + ", expected " + header.length +
+						" columns, but found " + splitString.length + ".");
+				} 
 
+				// parse snpname
 				String snpName = new String(splitString[0]);
+				if (snpName.length() == 0){
+					throw new PriorityPrunerException("Invalid name on line " + lineNum +
+							" in SNP Input Table.");
+				}
+				
+				// parse chr
 				String chr = new String(splitString[1]);
-
+				chr = chr.toUpperCase();
+				if (chr.length() == 0){
+					throw new PriorityPrunerException("Invalid chr on line " + lineNum +
+							" in SNP Input Table.");
+				}
+				// checks that no unsupported chromosomes are specified in the SNP
+				// input file
+				if (chr.equals("M")
+						|| chr.equals("MT")
+						|| chr.equals("CHRM")
+						|| chr.equals("Y")
+						|| chr.equals("CHRY")
+						|| chr.equals("24")) {
+					throw new PriorityPrunerException(
+							"Chromosome " + chr + " not supported. Found on line " + lineNum + ".");
+				}
+				
 				// in case chromosome X is encountered it gets recoded to "23"
-				if (chr.toUpperCase().equals("X")
-						|| chr.toUpperCase().equals("CHRX")
-						|| chr.toUpperCase().equals("CHR_X")
-						|| chr.toUpperCase().equals("X_NONPAR")
-						|| chr.toUpperCase().equals("23")) {
+				if (chr.equals("X")
+						|| chr.equals("CHRX")
+						|| chr.equals("23")) {
 					chr = "23";
 				}
+				
 				// stores parsed chromosomes
-				if (!chromsomes.contains(chr.toUpperCase())) {
-					chromsomes.add(chr.toUpperCase());
+				if (!chromsomeHash.contains(chr)) {
+					chromsomeHash.add(chr);
 				}
-				// continues parsing if either the chromosome parameter provided
-				// in command line matches the one in SNP input file, or if no
-				// chromosome option was provided in command line (i.e., all
-				// chromosomes in SNP input file will be parsed)
-				if (CommandLineOptions.getInstance().getChr() == null
-						|| chr.toUpperCase().equals(
-								CommandLineOptions.getInstance().getChr()
-										.toUpperCase())) {
-					// parses base pair position
-					int pos;
-					try {
-						pos = Integer.parseInt(new String(splitString[2]));
-					} catch (NumberFormatException e) {
-						throw new PriorityPrunerException(
-								"Invalid value specified for 'pos' at line "
-										+ lineNum + " in file \"" + filePath
-										+ "\". Integer value expected.");
-					}
-					// parses alleles
-					String allele1 = new String(splitString[3].toUpperCase());
-					String allele2 = new String(splitString[4].toUpperCase());
-
-					// parses p-value
-					double pValue;
-					try {
-						pValue = Double.parseDouble(new String(splitString[5]));
-					} catch (NumberFormatException e) {
-						throw new PriorityPrunerException(
-								"Invalid value specified for 'p' at line "
-										+ lineNum + " in file \"" + filePath
-										+ "\". Decimal value expected.");
-					}
-					// parses design score
-					int numAssays;
-					try {
-						numAssays = Integer
-								.parseInt(new String(splitString[6]));
-						if (numAssays != 1 && numAssays != 2) {
-							throw new NumberFormatException();
-						}
-					} catch (NumberFormatException e) {
-						throw new PriorityPrunerException(
-								"Invalid value specified for 'num_assays' at line "
-										+ lineNum + " in file \"" + filePath
-										+ "\". '1' or '2' expected.");
-					}
-					// parses force include flag
-					boolean forceInclude;
-					if (splitString[7].equals("0")) {
-						forceInclude = false;
-					} else if (splitString[7].equals("1")) {
-						forceInclude = true;
-					} else {
-						throw new PriorityPrunerException(
-								"Invalid value specified for 'force_include' at line "
-										+ lineNum + " in file \"" + filePath
-										+ "\". Binary value expected.");
-					}
-
-					// parses metric weights
-					double[] metrics = new double[numMetrics];
-					try {
-						for (int i = 0; i < metricNames.size(); i++) {
-							metrics[i] = Double.parseDouble(new String(
-									splitString[metricNames.get(i).getPos()]));
-						}
-
-					} catch (NumberFormatException e) {
-						throw new PriorityPrunerException(
-								"Invalid value specified for customized metric at line "
-										+ lineNum + " in file \"" + filePath
-										+ "\". Decimal value expected.");
-					}
-
-					// creates new SnpInfo-object with the parsed info from one
-					// line in SNP input file
-					SnpInfo snp = new SnpInfo(snpName, chr, pos, allele1,
-							allele2, pValue, numAssays, forceInclude, metrics);
-
-					// checks if a design score column is provided in the SNP
-					// input file, if it is - add this value to the
-					// SnpInfo-object
-					if (designScorePlacement != -1) {
-						double designScore;
-						try {
-							designScore = Double.parseDouble(new String(
-									splitString[designScorePlacement]));
-						} catch (NumberFormatException e) {
-							throw new PriorityPrunerException(
-									"Invalid value specified for 'design_score' at line "
-											+ lineNum + " in file \""
-											+ filePath
-											+ "\". Decimal value expected.");
-						}
-						snp.setDesignScore(designScore);
-					}
-
-					// checks whether the hashtable contains the SNP name,
-					// if it doesn't, it adds it
-					if (!snpNameToSnpInfoListHash.containsKey(snpName)) {
-						snpNameToSnpInfoListHash.put(snpName,
-								new ArrayList<SnpInfo>());
-					}
-					ArrayList<SnpInfo> snpInfoList = snpNameToSnpInfoListHash
-							.get(snpName);
-					// loops through the ArrayList corresponding to current SNP
-					// name in snpNameToSnpInfoListHash, to determine if this is
-					// a duplicate
-					for (SnpInfo currentSnp : snpInfoList) {
-						if ((currentSnp.getSnpName().equals(snpName)
-								&& currentSnp.getChr().equals(chr) && currentSnp
-								.getPos() == pos)
-								&& ((currentSnp.getAllele1().equals(allele1) && currentSnp
-										.getAllele2().equals(allele2)) || (currentSnp
-										.getAllele1().equals(allele2) && currentSnp
-										.getAllele2().equals(allele1)))) {
-							reader.close();
-							throw new PriorityPrunerException(
-									"Duplicated SNP \""
-											+ snpName
-											+ "\" at line "
-											+ lineNum
-											+ " in file \""
-											+ filePath
-											+ "\". \nThe combination of SNP name, chromosome, base pair position, and alleles should be unique. \nPlease remove or update the information about this SNP in input files and rerun program.");
-						}
-					}
-					// if not a duplicate, add the SNP to following data
-					// structures:
-					snpInfoList.add(snp);
-					snpNameToSnpInfoListHash.put(snpName, snpInfoList);
-					snps.add(snp);
+				
+				// skip the line if this isn't the chromosome we're filtering on
+				if (CommandLineOptions.getInstance().getChr() != null &&
+						!CommandLineOptions.getInstance().getChr().equals(chr)){
+					continue;
 				}
+				
+				// parse pos
+				int pos;
+				try {
+					pos = Integer.parseInt(new String(splitString[2]));
+				} catch (NumberFormatException e) {
+					throw new PriorityPrunerException(
+						"Invalid pos at line "
+									+ lineNum + " in SNP Input Table. Integer value expected.");
+				}
+
+				// parse allele1
+				String allele1 = new String(splitString[3].toUpperCase());
+				if (allele1.length() == 0){
+					throw new PriorityPrunerException("Invalid allele1 on line " + lineNum +
+							" in SNP Input Table.");
+				}
+				
+				// parse allele2
+				String allele2 = new String(splitString[4].toUpperCase());
+				if (allele2.length() == 0){
+					throw new PriorityPrunerException("Invalid allele2 on line " + lineNum +
+							" in SNP Input Table.");
+				}
+				
+				// parse p-value
+				double pValue;
+				try {
+					pValue = Double.parseDouble(new String(splitString[5]));
+				} catch (NumberFormatException e) {
+					throw new PriorityPrunerException(
+							"Invalid p at line "
+									+ lineNum + " in SNP Input Table. Decimal value expected.");
+				}
+
+//				// parse numAssays
+//				int numAssays;
+//				try {
+//					numAssays = Integer.parseInt(new String(splitString[6]));
+//					if (numAssays != 1 && numAssays != 2) {
+//						throw new NumberFormatException();
+//					}
+//				} catch (NumberFormatException e) {
+//					throw new PriorityPrunerException(
+//							"Invalid num_assays at line "
+//									+ lineNum + " in SNP Input Table. '1' or '2' expected.");
+//				}
+
+				// parse force include flag
+				boolean forceInclude;
+				if (splitString[6].equals("0")) {
+					forceInclude = false;
+				} else if (splitString[6].equals("1")) {
+					forceInclude = true;
+				} else {
+					throw new PriorityPrunerException(
+							"Invalid force_include at line "
+								+ lineNum + " in SNP Input Table. '0' or '1' expected.");
+				}
+
+				// parse the design score
+				double designScore;
+				try {
+					designScore = Double.parseDouble(new String(splitString[7]));
+				} catch (NumberFormatException e) {
+					throw new PriorityPrunerException(
+							"Invalid design_score at line "
+								+ lineNum + " in SNP Input Table. Decimal value expected.");
+				}
+
+				// parses metric weights
+				double[] metrics = new double[numMetrics];
+				try {
+					for (int i = 0; i < metricNames.size(); i++) {
+						metrics[i] = Double.parseDouble(new String(
+								splitString[metricNames.get(i).getPos()]));
+					}
+				} catch (NumberFormatException e) {
+					throw new PriorityPrunerException(
+							"Invalid metric at line "
+								+ lineNum + " in SNP Input Table. Decimal value expected.");
+				}
+
+				// creates new SnpInfo-object with the parsed info from one
+				// line in SNP input file
+				SnpInfo snp = new SnpInfo(snpName, chr, pos, allele1,
+						allele2, pValue, forceInclude, designScore, metrics);
+
+				// checks whether the hashtable contains the SNP name,
+				// if it doesn't, it adds it
+				if (!snpNameToSnpInfoListHash.containsKey(snpName)) {
+					snpNameToSnpInfoListHash.put(snpName,
+							new ArrayList<SnpInfo>());
+				}
+				
+				ArrayList<SnpInfo> snpInfoList = snpNameToSnpInfoListHash
+						.get(snpName);
+				
+				// loops through the ArrayList corresponding to current SNP
+				// name in snpNameToSnpInfoListHash, to determine if this is
+				// a duplicate
+				for (SnpInfo currentSnp : snpInfoList) {
+					if ((currentSnp.getSnpName().equals(snpName)
+							&& currentSnp.getChr().equals(chr) && currentSnp
+							.getPos() == pos)
+							&& ((currentSnp.getAllele1().equals(allele1) && currentSnp
+									.getAllele2().equals(allele2)) || (currentSnp
+											.getAllele1().equals(allele2) && currentSnp
+											.getAllele2().equals(allele1)))) {
+						throw new PriorityPrunerException(
+								"Duplicated SNP \""
+										+ snpName
+										+ "\" at line "
+										+ lineNum
+										+ " in SNP Input Table. " 
+										+ "The combination of snpname, chr, pos, allele1/allele2 must be unique.");
+					}
+				}
+				// if not a duplicate, add the SNP to following data
+				// structures:
+				snpInfoList.add(snp);
+				snpNameToSnpInfoListHash.put(snpName, snpInfoList);
+				snps.add(snp);
+
 			}
-			reader.close();
 			if (CommandLineOptions.getInstance().getChr() != null
-					&& !chromsomes.contains(CommandLineOptions.getInstance()
+					&& !chromsomeHash.contains(CommandLineOptions.getInstance()
 							.getChr().toUpperCase())) {
 				throw new PriorityPrunerException(
-						"No SNP at chromosome \""
+						"The SNP Input Table does not contain any SNPs at chromosome "
 								+ CommandLineOptions.getInstance().getChr()
-								+ "\" could be found in \""
-								+ filePath
-								+ "\". \nPlease respecify the argument in the command line or update input files.");
+								+ " No SNPs to analyze.");
 			}
 		} catch (FileNotFoundException e) {
-			throw new PriorityPrunerException("Could not open file: "
-					+ e.getMessage()
-					+ "\nPlease check that correct file path is provided.");
+			throw new PriorityPrunerException("Could not open file for reading:\n\n"
+					+ e.getMessage());
 		} catch (IOException e) {
-			throw new PriorityPrunerException("Could not open file: "
-					+ e.getMessage()
-					+ "\nPlease check that correct file path is provided.");
+			throw new PriorityPrunerException("Could not open file for reading:\n\n"
+					+ e.getMessage());
+		} catch (PriorityPrunerException e){
+			throw e;
+		}finally{
+			if (reader != null){
+				try{
+					reader.close();
+				}catch(IOException e){	
+					e.printStackTrace();
+				}
+			}
 		}
 	}
 
@@ -437,48 +398,48 @@ public class SnpListFile {
 	 * @throws PriorityPrunerException
 	 *             if problems are encountered during parsing
 	 */
-	private void parseForceInclude() throws PriorityPrunerException {
-		BufferedReader reader;
-		try {
-			reader = new BufferedReader(new FileReader(
-					options.getForceIncludeFilePath()));
-			int index = 1;
-			while (reader.ready()) {
-				String[] splitString = reader.readLine().split(delim);
-				// expecting one SNP per line, comments are allowed and won't be
-				// parsed
-				if (splitString.length < 1) {
-					reader.close();
-					throw new PriorityPrunerException(
-							"Missing SNP name at line: "
-									+ (index)
-									+ " in file \""
-									+ filePath
-									+ "\". \nPlease update file and rerun program.");
-				}
-				String snpName = new String(splitString[0]);
+//	private void parseForceInclude() throws PriorityPrunerException {
+//		BufferedReader reader;
+//		try {
+//			reader = new BufferedReader(new FileReader(
+//					options.getForceIncludeFilePath()));
+//			int index = 1;
+//			while (reader.ready()) {
+//				String[] splitString = reader.readLine().split(delim);
+//				// expecting one SNP per line, comments are allowed and won't be
+//				// parsed
+//				if (splitString.length < 1) {
+//					reader.close();
+//					throw new PriorityPrunerException(
+//							"Missing SNP name at line: "
+//									+ (index)
+//									+ " in file \""
+//									+ filePath
+//									+ "\". \nPlease update file and rerun program.");
+//				}
+//				String snpName = new String(splitString[0]);
+//
+//				forceIncludeHashSet.add(snpName);
+//				index++;
+//			}
+//			reader.close();
+//		} catch (IOException e) {
+//			throw new PriorityPrunerException("Could not open file: "
+//					+ e.getMessage());
+//		}
+//	}
 
-				forceIncludeHashSet.add(snpName);
-				index++;
-			}
-			reader.close();
-		} catch (IOException e) {
-			throw new PriorityPrunerException("Could not open file: "
-					+ e.getMessage());
-		}
-	}
-
-	/**
-	 * Sets the "force include"-flag in each SnpInfo-object according to the
-	 * force include file.
-	 */
-	private void setForceInclude() {
-		for (SnpInfo snp : snps) {
-			if (forceIncludeHashSet.contains(snp.getSnpName())) {
-				snp.setForceInclude(true);
-			}
-		}
-	}
+//	/**
+//	 * Sets the "force include"-flag in each SnpInfo-object according to the
+//	 * force include file.
+//	 */
+//	private void setForceInclude() {
+//		for (SnpInfo snp : snps) {
+//			if (forceIncludeHashSet.contains(snp.getSnpName())) {
+//				snp.setForceInclude(true);
+//			}
+//		}
+//	}
 
 	/**
 	 * This method makes sure information about a certain SNP matches in both
@@ -543,13 +504,164 @@ public class SnpListFile {
 		return null;
 	}
 
-	// public access to two of the private fields of this class
 
-	public ArrayList<SnpInfo> getSnps() {
-		return snps;
+	
+	
+	/**
+	 * Sorts the parsed SNPs according to the parameters defined by the user in
+	 * command line.
+	 */
+	private void sortSnps() {
+		// sort by force include then p-value, if a specific chromosome is
+		// selected
+		if (options.getChr() != null){
+			if (options.getSortByForceIncludeAndPValue()) {
+				Collections.sort(snps, new ForceIncludePValueSorter());
+				// sort by p-value then name, if a specific chromosome is selected
+			} else if (!options.getSortByForceIncludeAndPValue()) {
+				Collections.sort(snps);
+			}
+		}else{
+			// sort by force include, then by chromosome and p-value, if all
+			// chromosomes are selected
+			if (options.getSortByForceIncludeAndPValue()) {
+				Collections.sort(snps, new FIChrPValueSorter());
+				// sort by chromosome and then p-value, if all chromosomes are
+				// selected
+			} else if (!options.getSortByForceIncludeAndPValue()) {
+				Collections.sort(snps, new ChrPValueSorter());
+			}
+		}
+		
+		
+		for (SnpInfo snpInfo : snps) {
+			snpsSortedByChrPos.add(snpInfo);
+		}
+		
+		// sort by chromosome then position
+		Collections.sort(snpsSortedByChrPos, new PosSorter());
+		for (int i = 0; i < snpsSortedByChrPos.size(); i++) {
+			snpsSortedByChrPos.get(i).setSortedByPosIndex(i);
+		}
+		
 	}
+	
+	/**
+	 * This sorter sorts SNPs by chromosome and base pair position. (It is being
+	 * used by SnpListFile when all chromosomes are included in the run.)
+	 */
+	private class ChrPValueSorter implements Comparator<SnpInfo> {
 
-	public ArrayList<SnpInfo> getSnpsSortedByChrPos() {
-		return snpsSortedByChrPos;
+		@Override
+		public int compare(SnpInfo x, SnpInfo y) {
+			if (x.getChr().equals(y.getChr())) {
+				if ((Double.compare(x.getPValue(), y.getPValue())) == 0) {
+					// the name check was just added for comparison reasons
+					return (x.getSnpName().compareTo(y.getSnpName()));
+				} else {
+					return Double.compare(x.getPValue(), y.getPValue());
+				}
+			} else {
+				// first trying to parse the chromosomes as integers, otherwise they'll
+				// get compared as Strings
+				int xInt;
+				int yInt;
+				try {
+					xInt = Integer.parseInt(x.getChr());
+					yInt = Integer.parseInt(y.getChr());
+					return Integer.valueOf(xInt).compareTo(Integer.valueOf(yInt));
+				} catch (NumberFormatException e) {
+					return x.getChr().compareTo(y.getChr());
+				}
+			}
+		}
+	}
+	
+	/**
+	 * This sorter sorts SNPs in regards to if they are force included, then by
+	 * chromosome and position. (It is being used by SnpListFile when all
+	 * chromosomes are included in the run.)
+	 */
+	private class FIChrPValueSorter implements Comparator<SnpInfo> {
+
+		@Override
+		public int compare(SnpInfo x, SnpInfo y) {
+			if (x.getForceInclude() == y.getForceInclude()) {
+				if (x.getChr().equals(y.getChr())) {
+					if ((Double.compare(x.getPValue(), y.getPValue())) == 0) {
+						// the name check was just added for comparison reasons
+						return (x.getSnpName().compareTo(y.getSnpName()));
+					} else {
+						return Double.compare(x.getPValue(), y.getPValue());
+					}
+				} else {
+					// tries to parse the chromosomes as integers, otherwise they'll
+					// get compared as Strings
+					int xInt;
+					int yInt;
+					try {
+						xInt = Integer.parseInt(x.getChr());
+						yInt = Integer.parseInt(y.getChr());
+						return Integer.valueOf(xInt).compareTo(
+								Integer.valueOf(yInt));
+					} catch (NumberFormatException e) {
+						return x.getChr().compareTo(y.getChr());
+					}
+				}
+			} else {
+				return Boolean.valueOf(y.getForceInclude()).compareTo(
+						Boolean.valueOf(x.getForceInclude()));
+			}
+		}
+	}
+	
+
+	/**
+	 * Sorts SNPs in regards to if they are force included and then by p-value. (It
+	 * is used by SnpListFile when evaluating single chromosomes.)
+	 */
+	private class ForceIncludePValueSorter implements Comparator<SnpInfo> {
+
+		@Override
+		public int compare(SnpInfo x, SnpInfo y) {
+			if (x.getForceInclude() == y.getForceInclude()) {
+				if ((Double.compare(x.getPValue(), y.getPValue())) == 0) {
+					// the name check was just added for comparison reasons
+					return (x.getSnpName().compareTo(y.getSnpName())); 
+				} else {
+					return Double.compare(x.getPValue(), y.getPValue());
+				}
+			} else {
+				return Boolean.valueOf(y.getForceInclude()).compareTo(
+						Boolean.valueOf(x.getForceInclude()));
+			}
+		}
+	}
+	
+	/**
+	 * Sorts SnpInfo-objects in regards to chromosome and position. (Used by
+	 * SnpListFile.)
+	 */
+	private class PosSorter implements Comparator<SnpInfo> {
+
+		@Override
+		public int compare(SnpInfo x, SnpInfo y) {
+			if (x.getChr().equals(y.getChr())) {
+				return Integer.valueOf(x.getPos()).compareTo(
+						Integer.valueOf(y.getPos()));
+			} else {
+				// tries to parse the chromsomes as integers, otherwise they'll
+				// get compared as Strings
+				int xInt;
+				int yInt;
+				try {
+					xInt = Integer.parseInt(x.getChr());
+					yInt = Integer.parseInt(y.getChr());
+					return Integer.valueOf(xInt).compareTo(Integer.valueOf(yInt));
+				} catch (NumberFormatException e) {
+					return x.getChr().compareTo(y.getChr());
+				}
+			}
+		}
 	}
 }

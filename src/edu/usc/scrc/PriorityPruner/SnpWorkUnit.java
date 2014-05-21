@@ -50,8 +50,9 @@ public class SnpWorkUnit {
 	private String snpName;
 	private SnpInfo snpInfo;
 	private ArrayList<SnpGenotypes> currentGenotypes = new ArrayList<SnpGenotypes>();
-	private ArrayList<Integer> founderIndices = new ArrayList<Integer>();
-	private ArrayList<String> subjectSexes = new ArrayList<String>();
+	//private ArrayList<Integer> founderIndices = new ArrayList<Integer>();
+	//private ArrayList<String> subjectSexes = new ArrayList<String>();
+	private ArrayList<Individual> keptFounders;
 	private double minMaf;
 	private double minimumHardyWeinbergPvalue;
 	private double minimumGenotypePercentage;
@@ -77,12 +78,10 @@ public class SnpWorkUnit {
 	 *            list of SnpGenotypes-object within the current pruning window
 	 * @param referenceSNPIndex
 	 *            the position of the index SNP in genotypesList
-	 * @param founderIndices
-	 *            indices of founder subjects in the genotypes list. Right now
+	 * @param keptFounders
+	 *            founder subjects in the genotypes list. Right now
 	 *            we only support founders, so at the moment this corresponds to
 	 *            an index over all subjects chosen in this run
-	 * @param subjectSexes
-	 *            the gender of subjects chosen in this run
 	 * @param minMaf
 	 *            minimum allele frequency, as defined in command line
 	 * @param minimumHardyWeinbergPvalue
@@ -94,21 +93,19 @@ public class SnpWorkUnit {
 	 *             of genotypes
 	 */
 	public SnpWorkUnit(String snpName, ArrayList<SnpGenotypes> genotypesList,
-			int referenceSNPIndex, ArrayList<Integer> founderIndices,
-			ArrayList<String> subjectSexes, double minMaf,
+			int referenceSNPIndex, ArrayList<Individual> keptFounders, double minMaf,
 			double minimumHardyWeinbergPvalue, double minimumGenotypePercentage)
 			throws PriorityPrunerException {
 
 		this.snpName = snpName;
 		this.currentGenotypes = genotypesList;
 		this.referenceSNPIndex = referenceSNPIndex + 1;
-		this.founderIndices = founderIndices;
-		this.subjectSexes = subjectSexes;
+		this.keptFounders = keptFounders;
 		this.minMaf = minMaf;
 		this.minimumHardyWeinbergPvalue = minimumHardyWeinbergPvalue;
 		this.minimumGenotypePercentage = minimumGenotypePercentage;
 		this.snpInfo = currentGenotypes.get(referenceSNPIndex).getSnpInfo();
-		convertGenotypes(currentGenotypes);
+		//convertGenotypes(currentGenotypes);
 	}
 
 	/**
@@ -129,14 +126,15 @@ public class SnpWorkUnit {
 		} else {
 			// if calculations of maf, hwe, and missing percentage have not
 			// already been done for current SNP - calculate this!
-			for (SnpGenotypes genotype : currentGenotypes) {
-				if (!genotype.getCalculationDone()) {
-					getMafHweMissingPercent(genotype, founderIndices,
-							subjectSexes);
+			for (SnpGenotypes genotypes : currentGenotypes) {
+				if (!genotypes.getCalculationDone()) {
+					//getMafHweMissingPercent(genotype, founderIndices,subjectSexes);
+					getMafHweMissingPercentCompressed(genotypes);
 				}
 			}
+			
 			// add "4" to heterozygous genotypes
-			linkageToChrom();
+			//linkageToChrom();
 		}
 
 		// initiates calculations, will return false if the index SNP didn't
@@ -162,7 +160,7 @@ public class SnpWorkUnit {
 	 * @throws PriorityPrunerException
 	 *             if an invalid genotype is encountered during conversion
 	 */
-	private void convertGenotypes(ArrayList<SnpGenotypes> currentGenotypes)
+/*	private void convertGenotypes(ArrayList<SnpGenotypes> currentGenotypes)
 			throws PriorityPrunerException {
 
 		// goes through all SNPs in pruning window
@@ -215,17 +213,17 @@ public class SnpWorkUnit {
 			currentSnpGenotype.setLdFormatGenotypes(genotypesInt);
 		}
 	}
-
+*/
 	/**
 	 * Method ported from Haploview for LD calculation. Adds "4" to each allele
 	 * in a heterozygous genotype stored in the LD-format.
 	 */
-	private void linkageToChrom() throws PriorityPrunerException {
+/*	private void linkageToChrom() throws PriorityPrunerException {
 
 		// for each individual, and each SNP in pruning window,
 		// check if alleles are either homozygous or if one of them are
 		// missing, else add "4".
-		for (int i = 0; i < founderIndices.size(); i++) {
+		for (int i = 0; i < keptFounders.size(); i++) {
 			for (int j = 0; j < currentGenotypes.size(); j++) {
 				byte[][] geno = currentGenotypes.get(j).getLdFormatGenotypes();
 				byte thisMarkerA = geno[i][0];
@@ -239,7 +237,7 @@ public class SnpWorkUnit {
 				}
 			}
 		}
-	}
+	}*/
 
 	/**
 	 * Checks if a SNP passes all of the user-defined filters.
@@ -252,7 +250,7 @@ public class SnpWorkUnit {
 	private boolean isSnpValid(SnpGenotypes genotypes) {
 
 		if ((genotypes.getMaf() >= minMaf)
-				&& (((1 - genotypes.getMissingPercent()) * 100) >= minimumGenotypePercentage)
+				&& (((1 - genotypes.getMissingPercent())) >= minimumGenotypePercentage)
 				&& (genotypes.getHwePvalue() >= this.minimumHardyWeinbergPvalue)) {
 			return true;
 		} else {
@@ -282,8 +280,8 @@ public class SnpWorkUnit {
 					// they passed the user defined filter for maf, hwe and
 					// missing genotype percentage), LD calculation for this
 					// pair is initiated
-					LdResult ldResult = calculateLdResult(referenceGenotypes,
-							genotypes, founderIndices);
+					LdResult ldResult = calculateLdResultCompressed(referenceGenotypes,
+							genotypes);
 					if (ldResult != null && ldResult.getRSquared() > 1) {
 						ldResult.setRSquared(1);
 					}
@@ -311,7 +309,7 @@ public class SnpWorkUnit {
 			return false;
 		}
 	}
-
+	
 	/**
 	 * Method ported from Haploview. Calculates maf, hwe and missing genotype
 	 * percentage for the current SNP.
@@ -325,6 +323,101 @@ public class SnpWorkUnit {
 	 * @throws PriorityPrunerException
 	 *             if an invalid genotype is encountered in a SNP
 	 */
+
+	private void getMafHweMissingPercentCompressed(SnpGenotypes genotypes)
+			throws PriorityPrunerException {
+		
+		//byte allele1 = 0;
+		//byte allele2 = 0;
+		int numAllele1 = 0;
+		int numAllele2 = 0;
+		int numMissing = 0;
+		int numChromosomes = 0;
+		int[] founderHomCount = new int[5];
+		int founderHetCount = 0;
+
+		// initialize founderHomCount array to contain all zeros
+		for (int i = 0; i < 5; i++) {
+			founderHomCount[i] = 0;
+		}
+
+		for (int f = 0; f < keptFounders.size(); f++) {
+			// at the moment, "i" will equal "f", since we only support
+			// founders. This might be updated in future versions.
+			Individual founder = keptFounders.get(f);
+			
+			// counts genotypes for hwe (only for diploids)
+			boolean haploid  = genotypes.getSnpInfo().isChrX() && founder.getSex() == Individual.Sex.MALE;
+			
+			byte genotype = genotypes.getByteGenotype(f);
+			
+			if (!haploid) {
+				if (genotype != 0) {
+					numChromosomes+= 2;
+					if (genotype == 3) {
+						founderHetCount++;
+						numAllele1++;
+						numAllele2++;
+					} else if (genotype == 1){
+						founderHomCount[1]++;
+						numAllele1+=2;
+					} else if (genotype == 2){
+						founderHomCount[2]++;
+						numAllele2+=2;
+					}
+				}else{
+					numMissing+= 2;
+				}
+			}else{
+				
+				if (genotype != 0) {
+					numChromosomes+= 1;
+					if (genotype == 1){
+						numAllele1+=1;
+					} else if (genotype == 2){
+						numAllele2+=1;
+					}
+				}else{
+					numMissing+= 1;
+				}
+			}
+		}
+
+		// sets the values calculated, as well as a flag indicating that
+		// calculation is completed, in the SnpGenotypes-object
+
+		if (numAllele1 > numAllele2) {
+			genotypes.setMaf((double) numAllele2
+					/ (double) (numAllele1 + numAllele2));
+			genotypes.setMinorAllele((byte)2);
+			genotypes.setMajorAllele((byte)1);
+		} else {
+			genotypes.setMaf((double) numAllele1
+					/ (double) (numAllele1 + numAllele2));
+			genotypes.setMinorAllele((byte)1);
+			genotypes.setMajorAllele((byte)2);
+		}
+		genotypes.setMissingPercent((double) numMissing / numChromosomes);
+		genotypes.setHwePvalue(this.getHweValue(founderHomCount,
+				founderHetCount));
+		genotypes.setCalculationDone();
+		//System.out.println(genotypes.getSnpName() + "\t" + genotypes.getMissingPercent() + "\t" + genotypes.getHwePvalue() + "\t" + genotypes.getMaf());
+	}
+
+/*
+	*//**
+	 * Method ported from Haploview. Calculates maf, hwe and missing genotype
+	 * percentage for the current SNP.
+	 * 
+	 * @param genotypes
+	 *            the SNP to be evaluated, stored as a SnpGenotypes-object
+	 * @param founderIndices
+	 *            indices of founder subjects
+	 * @param subjectSexes
+	 *            gender of the subjects
+	 * @throws PriorityPrunerException
+	 *             if an invalid genotype is encountered in a SNP
+	 *//*
 
 	private void getMafHweMissingPercent(SnpGenotypes genotypes,
 			ArrayList<Integer> founderIndices, ArrayList<String> subjectSexes)
@@ -344,22 +437,16 @@ public class SnpWorkUnit {
 			founderHomCount[i] = 0;
 		}
 
+
 		for (int f = 0; f < founderIndices.size(); f++) {
 			// at the moment, "i" will equal "f", since we only support
 			// founders. This might be updated in future versions.
 			int i = founderIndices.get(f);
 
+			boolean haploid = genotypes.getSnpInfo().isChrX() && subjectSexes.get(i).equals("1");
+			
 			// counts genotypes for hwe (only for diploids)
-			if (!((genotypes.getSnpInfo().getChr().toUpperCase().equals("X")
-					|| genotypes.getSnpInfo().getChr().toUpperCase()
-							.equals("CHRX")
-					|| genotypes.getSnpInfo().getChr().toUpperCase()
-							.equals("CHR_X")
-					|| genotypes.getSnpInfo().getChr().toUpperCase()
-							.equals("X_NONPAR") || genotypes.getSnpInfo()
-					.getChr().toUpperCase().equals("23"))
-					&& subjectSexes.get(i).equals("1") && !genotypes
-					.getSnpInfo().getPseudoAutosomal())) {
+			if (!haploid) {
 
 				byte a1 = genotypes.getLdFormatGenotypes()[i][0];
 				byte a2 = genotypes.getLdFormatGenotypes()[i][1];
@@ -418,16 +505,7 @@ public class SnpWorkUnit {
 				}
 
 				// we only count the first allele for male haploids
-				if ((genotypes.getSnpInfo().getChr().toUpperCase().equals("X")
-						|| genotypes.getSnpInfo().getChr().toUpperCase()
-								.equals("CHRX")
-						|| genotypes.getSnpInfo().getChr().toUpperCase()
-								.equals("CHR_X")
-						|| genotypes.getSnpInfo().getChr().toUpperCase()
-								.equals("X_NONPAR") || genotypes.getSnpInfo()
-						.getChr().toUpperCase().equals("23"))
-						&& subjectSexes.get(i).equals("1")
-						&& !genotypes.getSnpInfo().getPseudoAutosomal()) {
+				if (haploid) {
 					break;
 				}
 			}
@@ -451,7 +529,8 @@ public class SnpWorkUnit {
 		genotypes.setHwePvalue(this.getHweValue(founderHomCount,
 				founderHetCount));
 		genotypes.setCalculationDone();
-	}
+		//System.out.println(genotypes.getSnpName() + "\t" + genotypes.getMissingPercent() + "\t" + genotypes.getHwePvalue() + "\t" + genotypes.getMaf());
+	}*/
 
 	/**
 	 * Method ported from Haploview. Calculates r^2 and D' between two SNPs.
@@ -464,8 +543,234 @@ public class SnpWorkUnit {
 	 *            indices of founder subjects
 	 * @return LdResult-object
 	 */
-	private LdResult calculateLdResult(SnpGenotypes genotypes1,
-			SnpGenotypes genotypes2, ArrayList<Integer> founderIndices) {
+	private LdResult calculateLdResultCompressed(SnpGenotypes genotypes1,
+			SnpGenotypes genotypes2) {
+		int doublehet = 0;
+		int[][] twoMarkerHaplos = new int[3][3];
+		int count;
+		double loglike, oldloglike, rsq, num, tmp, denom, denom1, denom2, dprime;
+
+		// if comparing a SNP with itself just return r^2=1, D'=1
+		if (genotypes1 == genotypes2) {
+			return new LdResult(1, 1);
+		}
+		// initialize twoMarkerHaplos matrix to contain all zeros
+		for (int i = 0; i < 3; i++) {
+			for (int j = 0; j < 3; j++) {
+				twoMarkerHaplos[i][j] = 0;
+			}
+		}
+
+		int[] marker1num = new int[5];
+		int[] marker2num = new int[5];
+
+		marker1num[0] = 0;
+		marker1num[genotypes1.getMajorAllele()] = 1;
+		marker1num[genotypes1.getMinorAllele()] = 2;
+		marker2num[0] = 0;
+		marker2num[genotypes2.getMajorAllele()] = 1;
+		marker2num[genotypes2.getMinorAllele()] = 2;
+
+		byte a1 = 0, a2 = 0, b1 = 0, b2 = 0;
+
+		// iterate through all chromosomes in dataset
+		for (int f = 0; f < keptFounders.size(); f++) {
+			// at the moment, "i" will equal "f", since we only support founders
+			//int i = founderIndices.get(f);
+			Individual founder = keptFounders.get(f);
+
+			byte genotype1 = genotypes1.getByteGenotype(f);
+			byte genotype2 = genotypes2.getByteGenotype(f);
+			if (genotype1 == 0){
+				a1 = 0;
+				b1 = 0;
+			}else if (genotype1 == 1){
+				a1 = 1;
+				b1 = 1;
+			}else if (genotype1 == 2){
+				a1 = 2;
+				b1 = 2;
+			}else if (genotype1 == 3){
+				a1 = 1;
+				b1 = 2;
+			}
+			if (genotype2 == 0){
+				a2 = 0;
+				b2 = 0;
+			}else if (genotype2 == 1){
+				a2 = 1;
+				b2 = 1;
+			}else if (genotype2 == 2){
+				a2 = 2;
+				b2 = 2;
+			}else if (genotype2 == 3){
+				a2 = 1;
+				b2 = 2;
+			}
+			
+			// assign alleles for each of a pair of chromosomes at a marker
+			// to four variables
+			boolean haploid = snpInfo.isChrX() && founder.getSex() == Individual.Sex.MALE;
+			if (haploid) {
+
+				// haploid (x chrom/male)
+				if (a1 != 0 && a2 != 0) {
+					twoMarkerHaplos[marker1num[a1]][marker2num[a2]]++;
+				}
+			} else {
+				// diploid
+				if (genotype1 == 0 || genotype2 == 0) {
+					// skip missing data
+				} else if (genotype1 == 3 && genotype2 == 3) {
+					doublehet++;
+					// find doublehets and resolved haplotypes
+				} else if (genotype1 == 3) {
+					twoMarkerHaplos[1][marker2num[a2]]++;
+					twoMarkerHaplos[2][marker2num[a2]]++;
+				} else if (genotype2 == 3) {
+					twoMarkerHaplos[marker1num[a1]][1]++;
+					twoMarkerHaplos[marker1num[a1]][2]++;
+				} else {
+					twoMarkerHaplos[marker1num[a1]][marker2num[a2]]++;
+					twoMarkerHaplos[marker1num[b1]][marker2num[b2]]++;
+				}
+			}
+		}
+
+		// another monomorphic marker check
+		int r1 = twoMarkerHaplos[1][1] + twoMarkerHaplos[1][2];
+		int r2 = twoMarkerHaplos[2][1] + twoMarkerHaplos[2][2];
+		int c1 = twoMarkerHaplos[1][1] + twoMarkerHaplos[2][1];
+		int c2 = twoMarkerHaplos[1][2] + twoMarkerHaplos[2][2];
+
+		if ((r1 == 0 || r2 == 0 || c1 == 0 || c2 == 0) && doublehet == 0) {
+			return null;
+		}
+
+		double pA1, pB1, pA2, pB2;
+		int total_chroms;
+
+		known[AA] = twoMarkerHaplos[1][1];
+		known[AB] = twoMarkerHaplos[1][2];
+		known[BA] = twoMarkerHaplos[2][1];
+		known[BB] = twoMarkerHaplos[2][2];
+		unknownDH = doublehet;
+
+		total_chroms = (int) (known[AA] + known[AB] + known[BA] + known[BB] + 2 * unknownDH);
+
+		pA1 = (known[AA] + known[AB] + unknownDH) / (double) total_chroms;
+		pB1 = 1 - pA1;
+		pA2 = (known[AA] + known[BA] + unknownDH) / (double) total_chroms;
+		pB2 = 1 - pA2;
+		const_prob = 0.1;
+
+		probHaps[AA] = const_prob;
+		probHaps[AB] = const_prob;
+		probHaps[BA] = const_prob;
+		probHaps[BB] = const_prob;
+
+		count_haps(0);
+		estimate_p();
+
+		// now we have an initial reasonable guess at p we can
+		// start the EM - let the fun begin
+		const_prob = 0.0;
+		count = 1;
+		loglike = -999999999;
+
+		while (count < 1000) {
+			oldloglike = loglike;
+			count_haps(count);
+			loglike = (known[AA] * Math.log(probHaps[AA]) + known[AB]
+					* Math.log(probHaps[AB]) + known[BA]
+					* Math.log(probHaps[BA]) + known[BB]
+					* Math.log(probHaps[BB]))
+					/ LN10
+					+ ((double) unknownDH * Math.log(probHaps[AA]
+							* probHaps[BB] + probHaps[AB] * probHaps[BA]))
+					/ LN10;
+			if (Math.abs(loglike - oldloglike) < TOLERANCE) {
+				break;
+			}
+			estimate_p();
+			count++;
+		}
+
+		num = probHaps[AA] * probHaps[BB] - probHaps[AB] * probHaps[BA];
+
+		if (num < 0) {
+
+			// flip matrix so we get the positive D'
+			// flip AA with AB and BA with BB
+			tmp = probHaps[AA];
+			probHaps[AA] = probHaps[AB];
+			probHaps[AB] = tmp;
+
+			tmp = probHaps[BB];
+			probHaps[BB] = probHaps[BA];
+			probHaps[BA] = tmp;
+
+			// flip frequency of second allele
+			// done in this slightly asinine way because of a compiler
+			// bugz0r in the dec-alpha version of java
+			// which causes it to try to parallelize the swapping operations
+			// and mis-schedules them
+			pA2 = pA2 + pB2;
+			pB2 = pA2 - pB2;
+			pA2 = pA2 - pB2;
+
+			// flip counts in the same fashion as p's
+			tmp = numHaps[AA];
+			numHaps[AA] = numHaps[AB];
+			numHaps[AB] = tmp;
+
+			tmp = numHaps[BB];
+			numHaps[BB] = numHaps[BA];
+			numHaps[BA] = tmp;
+
+			// num has now undergone a sign change
+			num = probHaps[AA] * probHaps[BB] - probHaps[AB] * probHaps[BA];
+
+			// flip known array for likelihood computation
+			tmp = known[AA];
+			known[AA] = known[AB];
+			known[AB] = tmp;
+
+			tmp = known[BB];
+			known[BB] = known[BA];
+			known[BA] = tmp;
+		}
+
+		denom1 = (probHaps[AA] + probHaps[BA]) * (probHaps[BA] + probHaps[BB]);
+		denom2 = (probHaps[AA] + probHaps[AB]) * (probHaps[AB] + probHaps[BB]);
+
+		if (denom1 < denom2) {
+			denom = denom1;
+		} else {
+			denom = denom2;
+		}
+		dprime = num / denom;
+
+		// add computation of r^2 = (D^2)/p(1-p)q(1-q)
+		rsq = num * num / (pA1 * pB1 * pA2 * pB2);
+
+		return new LdResult(rsq, dprime);
+	}
+	
+	
+	/**
+	 * Method ported from Haploview. Calculates r^2 and D' between two SNPs.
+	 * 
+	 * @param genotypes1
+	 *            genotypes for SNP 1
+	 * @param genotypes2
+	 *            genotypes for SNP 2
+	 * @param founderIndices
+	 *            indices of founder subjects
+	 * @return LdResult-object
+	 */
+/*	private LdResult calculateLdResult(SnpGenotypes genotypes1,
+			SnpGenotypes genotypes2) {
 		int doublehet = 0;
 		int[][] twoMarkerHaplos = new int[3][3];
 		int count;
@@ -495,41 +800,29 @@ public class SnpWorkUnit {
 		byte a1, a2, b1, b2;
 
 		// iterate through all chromosomes in dataset
-		for (int f = 0; f < founderIndices.size(); f++) {
+		for (int f = 0; f < keptFounders.size(); f++) {
 			// at the moment, "i" will equal "f", since we only support founders
-			int i = founderIndices.get(f);
+			Individual founder = keptFounders.get(f);
+			//int i = founderIndices.get(f);
 
 			// assign alleles for each of a pair of chromosomes at a marker
 			// to four variables
-			if ((snpInfo.getChr().toUpperCase().equals("X")
-					|| snpInfo.getChr().toUpperCase().equals("CHRX")
-					|| snpInfo.getChr().toUpperCase().equals("CHR_X")
-					|| snpInfo.getChr().toUpperCase().equals("X_NONPAR") || snpInfo
-					.getChr().toUpperCase().equals("23"))
-					&& subjectSexes.get(i).equals("1")
-					&& !genotypes1.getSnpInfo().getPseudoAutosomal()
-					&& !genotypes2.getSnpInfo().getPseudoAutosomal()) {
+			boolean haploid = snpInfo.isChrX() && founder.getGender().equals("1");
+			if (haploid) {
 
 				// haploid (x chrom/male)
-				a1 = genotypes1.getLdFormatGenotypes()[i][0];
-				a2 = genotypes2.getLdFormatGenotypes()[i][0];
+				a1 = genotypes1.getLdFormatGenotypes()[f][0];
+				a2 = genotypes2.getLdFormatGenotypes()[f][0];
 
 				if (a1 != 0 && a2 != 0) {
 					twoMarkerHaplos[marker1num[a1]][marker2num[a2]]++;
 				}
-			} else if (subjectSexes.get(i).equals("1")
-					&& (genotypes1.getSnpInfo().getPseudoAutosomal() || genotypes2
-							.getSnpInfo().getPseudoAutosomal())
-					&& (genotypes1.getSnpInfo().getPseudoAutosomal() != genotypes2
-							.getSnpInfo().getPseudoAutosomal())) {
-				// pseudoautosomal and haploid
-				// skip
 			} else {
 				// diploid
-				a1 = genotypes1.getLdFormatGenotypes()[i][0];
-				a2 = genotypes2.getLdFormatGenotypes()[i][0];
-				b1 = genotypes1.getLdFormatGenotypes()[i][1];
-				b2 = genotypes2.getLdFormatGenotypes()[i][1];
+				a1 = genotypes1.getLdFormatGenotypes()[f][0];
+				a2 = genotypes2.getLdFormatGenotypes()[f][0];
+				b1 = genotypes1.getLdFormatGenotypes()[f][1];
+				b2 = genotypes2.getLdFormatGenotypes()[f][1];
 
 				if (a1 == 0 || a2 == 0 || b1 == 0 || b2 == 0) {
 					// skip missing data
@@ -668,7 +961,7 @@ public class SnpWorkUnit {
 		rsq = num * num / (pA1 * pB1 * pA2 * pB2);
 
 		return new LdResult(rsq, dprime);
-	}
+	}*/
 
 	/**
 	 * Method ported from Haploview.

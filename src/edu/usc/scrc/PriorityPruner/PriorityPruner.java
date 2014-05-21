@@ -61,8 +61,8 @@ public class PriorityPruner {
 				// TODO: update download info
 				LogWriter
 						.getLogger()
-						.info("Welcome to PriorityPruner version 1.0 \n\nFor latest version please visit: http://sourceforge.net/projects/prioritypruner/\n(C) 2014 University of Southern California, The MIT License (MIT)\n-------------------------------------------------------------------------------\n");
-				LogWriter.getLogger().warn(e.getMessage());
+						.info("Welcome to PriorityPruner version 0.1.0 \n\nFor latest version please visit: http://sourceforge.net/projects/prioritypruner/\n(C) 2014 Christopher K. Edlund et al., The MIT License (MIT)\n-------------------------------------------------------------------------------\n");
+				LogWriter.getLogger().warn(e.getMessage());				
 				System.exit(0);
 			}
 
@@ -71,19 +71,25 @@ public class PriorityPruner {
 					"org.apache.log4j.PatternLayout");
 			layout.setConversionPattern("%m%n");
 			FileAppender logFileAppender = new FileAppender(layout,
-					options.getOutputFile() + ".log", false);
+					options.getOutputPrefix() + ".log", false);
 			Logger.getRootLogger().addAppender(logFileAppender);
 			// TODO: update download info
 			LogWriter
 					.getLogger()
-					.info("Welcome to PriorityPruner version 1.0 \n\nFor latest version please visit: http://sourceforge.net/projects/prioritypruner/\n(C) 2014 University of Southern California, The MIT License (MIT)\n-------------------------------------------------------------------------------\n");
-			LogWriter.getLogger().info(options.getOptionsInEffect());
+					.info("Welcome to PriorityPruner version 0.1.0 \n\nFor latest version please visit: http://sourceforge.net/projects/prioritypruner/\n(C) 2014 Christopher K. Edlund et al., The MIT License (MIT)\n-------------------------------------------------------------------------------\n");
+			
 			long start = System.currentTimeMillis();
-			LogWriter.getLogger()
-					.info("Analysis started: " + new Date() + "\n");
+			if (options.getOutputPrefix()!= null){
 			LogWriter.getLogger().info(
 					"Writing this text to log file [ "
-							+ options.getOutputFile() + ".log ]");
+							+ options.getOutputPrefix() + ".log ]");
+			}
+			
+			LogWriter.getLogger()
+					.info("Analysis started: " + new Date() + "\n");
+
+			LogWriter.getLogger().info(options.getOptionsInEffect());
+			
 			// sets logging level to debug if the -verbose option is specified
 			// in command line
 			if (options.getVerbose()) {
@@ -96,7 +102,7 @@ public class PriorityPruner {
 			// if(Genotypes.getSnpGenotypes()!=null &&
 			// Genotypes.getSnpGenotypes()!=null) could be used instead.
 			if (options.getTped() != null && options.getTfam() != null
-					&& options.getSnpFilePath() != null) {
+					&& options.getSnpTablePath() != null) {
 				// initiates pruning
 				new Pruner();
 				LogWriter.getLogger()
@@ -106,12 +112,12 @@ public class PriorityPruner {
 				printDuration(end - start);
 			} else {
 				throw new PriorityPrunerException(
-						"Missing genotype or family data, please rerun program with correct input files using following options: \n-tfile : specifies the tped and tfam files, if they have the same prefix (entered without suffix) \n-tped : specifies the tped file (entered with suffix: \".tped\") \n-tfam : specifies the tfam file (entered with suffix: \".tfam\") \n-snpfile : specifies the SNP input file (entered with suffix: \".txt\")");
+						"Missing genotype dataset or SNP input table. You must define input files with the following options: \n-tfile : specifies the tped and tfam files, if they have the same prefix (entered without suffix) \n-tped : specifies the tped file (entered with suffix: \".tped\") \n-tfam : specifies the tfam file (entered with suffix: \".tfam\") \n-snp_table : specifies the SNP input table");
 			}
 			// catches all PriorityPrunerExceptions that get thrown during
 			// execution of this program and exits it
 		} catch (PriorityPrunerException e) {
-			LogWriter.getLogger().warn(e.getMessage());
+			LogWriter.getLogger().warn("\r\nERROR: " + e.getMessage());
 			System.exit(0);
 		} catch (IOException e) {
 			LogWriter

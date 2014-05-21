@@ -33,29 +33,16 @@ import java.util.Comparator;
 public class ScoreSorter implements Comparator<Result> {
 	@Override
 	public int compare(Result x, Result y) {
-		if (x.getPartnerSnp().getForceInclude() == y.getPartnerSnp()
-				.getForceInclude()) {
-			if (x.getPartnerSnp().getPassDesignScore() == y.getPartnerSnp()
-					.getPassDesignScore()) {
-				if (x.getPartnerSnp().getNumBeadTypes() == y.getPartnerSnp()
-						.getNumBeadTypes()) {
-					if (x.getPartnerSnp().getScore() == y.getPartnerSnp()
-							.getScore()) {
-						return (y.getPartnerSnp().getSnpName().compareTo(x
-								.getPartnerSnp().getSnpName()));
-					} else {
-						return (Double.compare(y.getPartnerSnp().getScore(), x
-								.getPartnerSnp().getScore()));
-					}
-				} else {
-					return (Double.compare(x.getPartnerSnp().getNumBeadTypes(),
-							y.getPartnerSnp().getNumBeadTypes()));
-				}
+		if (x.getPartnerSnp().getForceInclude() == y.getPartnerSnp().getForceInclude()) {
+			if (x.getPartnerSnp().getScore() == y.getPartnerSnp()
+					.getScore()) {
+				return (y.getPartnerSnp().getSnpName().compareTo(x
+						.getPartnerSnp().getSnpName()));
 			} else {
-				return (Boolean.valueOf(y.getPartnerSnp().getPassDesignScore()))
-						.compareTo(Boolean.valueOf(x.getPartnerSnp()
-								.getPassDesignScore()));
+				return (Double.compare(y.getPartnerSnp().getScore(), x
+						.getPartnerSnp().getScore()));
 			}
+
 		} else {
 			return (Boolean.valueOf(y.getPartnerSnp().getForceInclude())
 					.compareTo(Boolean.valueOf(x.getPartnerSnp()

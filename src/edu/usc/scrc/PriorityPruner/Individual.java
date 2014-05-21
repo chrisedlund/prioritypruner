@@ -29,14 +29,20 @@ package edu.usc.scrc.PriorityPruner;
  * current run.
  */
 public class Individual {
+	
+	public enum Sex {
+	    MALE, FEMALE, UNKNOWN 
+	}
+	
 	private String familyID;
 	private String individualID;
 	private String momID;
 	private String dadID;
-	private String gender;
+	//private String gender;
 	private Individual mom;
 	private Individual dad;
 	private boolean keep;
+	private Sex sex;
 
 	/**
 	 * Constructor for Individual.
@@ -51,17 +57,26 @@ public class Individual {
 	 *            identification string for mother
 	 * @param gender
 	 *            gender of individual
+	 * @throws PriorityPrunerException 
 	 */
 	public Individual(String familyID, String individualID, String dadID,
-			String momID, String gender) {
+			String momID, String sexString) throws PriorityPrunerException {
 		this.familyID = familyID;
 		this.individualID = individualID;
 		this.dadID = dadID;
 		this.momID = momID;
-		this.gender = gender;
+		if (sexString.equals("1")){
+			this.sex = Sex.MALE;
+		}else if (sexString.equals("2")){
+			this.sex = Sex.FEMALE;
+		}else{
+			throw new PriorityPrunerException("Invalid sex " + sexString + " for [ " + familyID + " " + individualID + " ]");
+		}
+		//this.gender = sexString;
 	}
 
 	// public getters and setter for private fields of this class
+
 
 	public String getFamilyID() {
 		return familyID;
@@ -95,13 +110,13 @@ public class Individual {
 		this.momID = momID;
 	}
 
-	public String getGender() {
-		return gender;
-	}
-
-	public void setGender(String gender) {
-		this.gender = gender;
-	}
+//	public String getGender() {
+//		return gender;
+//	}
+//
+//	public void setGender(String gender) {
+//		this.gender = gender;
+//	}
 
 	public Individual getMom() {
 		return mom;
@@ -125,5 +140,9 @@ public class Individual {
 
 	public void setKeep(boolean keep) {
 		this.keep = keep;
+	}
+
+	public Sex getSex() {
+		return sex;
 	}
 }

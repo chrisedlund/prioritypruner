@@ -23,12 +23,16 @@ THE SOFTWARE.
 
 package edu.usc.scrc.PriorityPruner;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 
 /**
  * This class is responsible for pruning and prioritizing the SNPs defined in
@@ -44,7 +48,6 @@ public class Pruner {
 	private int pickOrder = 1;
 	private CommandLineOptions options = CommandLineOptions.getInstance();
 	private PrintStream ldPrintStream;
-	private PrintStream printStreamChrOutput;
 
 	/**
 	 * Constructor for Pruner. Initiates parsing of genotype and family data by
@@ -56,13 +59,25 @@ public class Pruner {
 	 */
 	public Pruner() throws PriorityPrunerException {
 		// initiates parsing of the SNP input file
-		this.snpListFile = new SnpListFile(options.getSnpFilePath(),
+		this.snpListFile = new SnpListFile(options.getSnpTablePath(),
 				options.getNumMetrics());
 		// initiates parsing of tped and tfam files
 		this.genotypes = new TPlink(options.getTped(), options.getTfam(),
 				this.snpListFile);
-		createLdFile();
-		init();
+		
+		try{
+			checkSnpsAreInGenotypeFile();
+			createLdFile();
+			startPruning();
+		}catch (PriorityPrunerException e){
+			throw e;
+		}finally{
+			if (ldPrintStream != null){
+				
+					ldPrintStream.close();
+	
+			}
+		}
 	}
 
 	/**
@@ -78,19 +93,41 @@ public class Pruner {
 		File ldFile;
 		FileOutputStream ldOutputStream;
 		try {
-			ldFile = new File(options.getOutputFile() + ".ld");
+			ldFile = new File(options.getOutputPrefix() + ".ld");
 			ldOutputStream = new FileOutputStream(ldFile);
 
 			if (!ldFile.exists()) {
 				ldFile.createNewFile();
 			}
 			ldPrintStream = new PrintStream(ldOutputStream);
+			this.ldPrintStream.println("index_snp" + "\t" + "tagged_snp" + "\t" + "distance" + "\t" + "r^2" + "\t" + "D'");
 		} catch (IOException e) {
 			throw new PriorityPrunerException("Could not create file: "
 					+ e.getMessage()
 					+ "\nPlease check that correct file path is provided.");
 		}
-		this.ldPrintStream.println("Index SNP	Partner SNP	Distance	r^2	D'");
+		
+	}
+	
+	
+	/**
+	 * Checks that all SNPs defined in the SNP Input Table have corresponding data in the
+	 * genotype dataset.
+	 * 
+	 * @throws PriorityPrunerException
+	 *             if SNP not found in the genotype dataset
+	 */
+	private void checkSnpsAreInGenotypeFile() throws PriorityPrunerException{
+		// checks that corresponding SNP is provided in tped file
+		for (SnpInfo snp : snpListFile.getSnps()) {
+			if (!snp.getInTped()) {
+				throw new PriorityPrunerException(snp.getSnpName()
+						+ " at chromsome " + snp.getChr()
+						+ ":" + snp.getPos()
+						+ " with alleles: " + snp.getAllele1() + " "
+						+ snp.getAllele2() + ", not found in genotype dataset.");
+			}
+		}
 	}
 
 	/**
@@ -102,56 +139,32 @@ public class Pruner {
 	 * @throws PriorityPrunerException
 	 *             if invalid information is encountered
 	 */
-	private void init() throws PriorityPrunerException {
+	private void startPruning() throws PriorityPrunerException {
 
-		int prunedSnpIndex = 0;
+		//int prunedSnpIndex = 0;
 
-		// goes through all SNPs in the SNP input file
+		// loops through all SNPs in the SNP Input Table in order of ascending p-value
 		for (SnpInfo snp : snpListFile.getSnps()) {
-			// checks that no unsupported chromosomes are specified in the SNP
-			// input file
-			if (snp.getChr().toUpperCase().equals("M")
-					|| snp.getChr().toUpperCase().equals("MT")
-					|| snp.getChr().toUpperCase().equals("CHRM")
-					|| snp.getChr().toUpperCase().equals("CHR_M")
-					|| snp.getChr().toUpperCase().equals("Y")
-					|| snp.getChr().toUpperCase().equals("CHRY")
-					|| snp.getChr().toUpperCase().equals("CHR_Y")
-					|| snp.getChr().toUpperCase().equals("24")) {
-				throw new PriorityPrunerException(
-						"Chromosome \""
-								+ snp.getChr()
-								+ "\" is not supported. \nPlease update input files and rerun program");
-			}
-			// checks that corresponding SNP is provided in tped file
-			if (!snp.getInTped()) {
-				throw new PriorityPrunerException("SNP \"" + snp.getSnpName()
-						+ "\" at chromsome " + snp.getChr()
-						+ ", base pair position " + snp.getPos()
-						+ " with alleles: " + snp.getAllele1() + " "
-						+ snp.getAllele2() + ", couldn't be found in file \""
-						+ options.getTped()
-						+ "\".\nPlease update input files and rerun program.");
-			}
+
 			// prunes current SNP if it's not already picked and either force
 			// included or not tagged
 			if (!snp.getPicked() && (!snp.getTagged() || snp.getForceInclude())) {
 				LogWriter.getLogger().debug(
-						"\nUsing index SNP \"" + snp.getSnpName()
-								+ "\" with p-value: " + snp.getPValue());
+					"\nUsing index SNP " + snp.getSnpName() + " with p-value: " + snp.getPValue());
 				prune(snp);
-				prunedSnpIndex++;
+				//prunedSnpIndex++;
 
 				// prints out how many SNPs that currently are processed, if
 				// verbose option is entered
-				if (prunedSnpIndex % 1000 == 0) {
-					LogWriter.getLogger().debug(
-							"\nProcessed " + prunedSnpIndex + " SNPs\n");
-				}
+//				if (prunedSnpIndex % 1000 == 0) {
+//					LogWriter.getLogger().debug(
+//							"\nProcessed " + prunedSnpIndex + " SNPs\n");
+//				}
+				
 			} else {
 				LogWriter.getLogger().debug(
-						"\nSkipping SNP \"" + snp.getSnpName()
-								+ "\" - already tagged/picked");
+						"\nSkipping " + snp.getSnpName()
+								+ " - already tagged or picked");
 			}
 		}
 		ldPrintStream.close();
@@ -159,7 +172,7 @@ public class Pruner {
 				"--------------------------------------------------");
 
 		// creates the pruning results file
-		createReslutFile();
+		createResultsFile();
 	}
 
 	/**
@@ -170,42 +183,41 @@ public class Pruner {
 	 * @throws PriorityPrunerException
 	 *             if new file couldn't be created
 	 */
-	private void createReslutFile() throws PriorityPrunerException {
+	private void createResultsFile() throws PriorityPrunerException {
 
-		File outputFile;
-		FileOutputStream outputStream;
+		BufferedWriter writer = null;
+		
 		try {
 			// creates output file
-			outputFile = new File(options.getOutputFile() + ".results");
-			outputStream = new FileOutputStream(outputFile);
-			if (!outputFile.exists()) {
-				outputFile.createNewFile();
-			}
-			printStreamChrOutput = new PrintStream(outputStream);
+			
+			File outputFile = new File(options.getOutputPrefix() + ".results");
+			writer = new BufferedWriter(new FileWriter(outputFile));
+			
+			LogWriter.getLogger().info("Writing pruning results to [ " + options.getOutputPrefix() + ".results" + " ]");
 			// writes to log and output files
-			printStreamChrOutput
-					.println("SNP	Chr	Pos		A1	A2	P-value		BeadTypes Tagged Picked	PickOrder");
-			LogWriter.getLogger().debug(
-					"\nSNP	Chr	Pos	A1	A2	Score	Tagged	Picked");
+			
+			writer.write("name" + "\t" + "chr" + "\t" + "pos" + "\t" + "a1" + "\t" + "a2" + "\t" +
+						"p" + "\t" + "forceSelect" +  "\t" + "tagged" + "\t" + "picked" +
+					"\t" + "pickOrder\n");
 			for (SnpInfo snp : snpListFile.getSnps()) {
-				LogWriter.getLogger().debug(
-						snp.getSnpName() + "\t" + snp.getChr() + "\t"
-								+ snp.getPos() + "\t" + snp.getAllele1() + "\t"
-								+ snp.getAllele2() + "\t" + snp.getScore()
-								+ "\t" + snp.getTagged() + "\t"
-								+ snp.getPicked());
-				printStreamChrOutput.println(snp.getSnpName() + "\t"
+				writer.write(snp.getSnpName() + "\t"
 						+ snp.getChr() + "\t" + snp.getPos() + "\t"
 						+ snp.getAllele1() + "\t" + snp.getAllele2() + "\t"
-						+ snp.getPValue() + "\t\t" + snp.getNumBeadTypes()
+						+ snp.getPValue() + "\t"
+						+ snp.getForceInclude()
 						+ "\t" + snp.getTagged() + "\t" + snp.getPicked()
-						+ "\t" + snp.getPickOrder());
+						+ "\t" + snp.getPickOrder() + "\n");
 			}
-			printStreamChrOutput.close();
 		} catch (IOException e) {
 			throw new PriorityPrunerException("Could not create file: "
 					+ e.getMessage()
 					+ "\nPlease check that correct file path is provided.");
+		}finally{
+			if (writer != null){
+				try{
+					writer.close();
+				}catch(IOException e){e.printStackTrace();}
+			}
 		}
 	}
 
@@ -279,8 +291,16 @@ public class Pruner {
 	 */
 	private void prune(SnpInfo indexSnp) throws PriorityPrunerException {
 
-		int startPos = (int) (indexSnp.getPos() - options.getHalfWindowSize());
-		int endPos = (int) (indexSnp.getPos() + options.getHalfWindowSize());
+		// first check if the index SNP passes the design score or is force-included
+		if (indexSnp.getDesignScore() < options.getMinDesignScore() && 
+				!indexSnp.getForceInclude()){
+			LogWriter.getLogger().debug("Skipping index SNP " + indexSnp.getSnpName() + 
+					"- design score is less than threshold.");
+			return;
+		}
+		
+		int startPos = (int) (indexSnp.getPos() - options.getMaxDistance());
+		int endPos = (int) (indexSnp.getPos() + options.getMaxDistance());
 
 		if (startPos < 1) {
 			startPos = 1;
@@ -321,8 +341,10 @@ public class Pruner {
 		for (int i = startSnpInfo.getSortedByPosIndex(); i < endSnpInfo
 				.getSortedByPosIndex() + 1; i++) {
 			SnpInfo snpInfo = snpListFile.getSnpsSortedByChrPos().get(i);
+			// if genotypes couldn't be found -- this shouldn't ever happen
 			if (snpInfo.getSnpGenotypes() == null) {
-				continue;
+				throw new PriorityPrunerException("Could not find genotypes for " + 
+					snpInfo.getSnpName());
 			}
 			genotypesList.add(snpInfo.getSnpGenotypes());
 			if (indexSnp == snpInfo) {
@@ -330,63 +352,34 @@ public class Pruner {
 				referenceSNPIndex = genotypesList.size() - 1;
 			}
 		}
-		// if index SNP wasn't found
+		// if index SNP wasn't found - this shouldn't ever happen
 		if (referenceSNPIndex < 0) {
-			if (indexSnp.getDesignScore() >= options
-					.getAbsoluteMinDesignScore()) {
-				indexSnp.setTagged(true);
-				indexSnp.setPicked(true);
-				indexSnp.setPickOrder(pickOrder);
-				pickOrder++;
-				LogWriter.getLogger().debug(
-						"Could not find index SNP \"" + indexSnp.getSnpName()
-								+ "\" at chr \"" + indexSnp.getChr() + ":"
-								+ indexSnp.getPos()
-								+ "\" in input files. Picking anyways.");
-			} else {
-				LogWriter
-						.getLogger()
-						.debug("Could not find index SNP \""
-								+ indexSnp.getSnpName()
-								+ "\" at chr \""
-								+ indexSnp.getChr()
-								+ ":"
-								+ indexSnp.getPos()
-								+ "\" in input files. It could not be picked due to low design score.");
-			}
-			return;
+			throw new PriorityPrunerException("Could not find genotypes for index SNP: " + 
+					indexSnp.getSnpName());
 		}
+		
 		// calling SnpWorkUnit to do LD calculations
 		SnpWorkUnit snpWorkUnit = new SnpWorkUnit(indexSnp.getSnpName(),
 				genotypesList, referenceSNPIndex,
-				genotypes.getFounderIndices(), genotypes.getSubjectSexes(),
-				options.getMinMaf(), options.getMinimumHardyWeinbergPvalue(),
-				options.getMinimumGenotypePercentage());
+				genotypes.getKeptFounders(),
+				options.getMinMaf(), options.getMinHwe(),
+				options.getMinSnpCallRate());
 
 		snpWorkUnit.performWork();
 
 		// if index SNP didn't pass all filters for MAF, HWE and missing
 		// genotype percentage - skip it, and choose new index SNP
 		if (!snpWorkUnit.getIndexSnpPassed() && !indexSnp.getForceInclude()) {
-			LogWriter
-					.getLogger()
-					.debug("Skipping SNP \""
-							+ indexSnp.getSnpName()
-							+ "\", since it didn't pass all filters for MAF, HWE and missing genotype percentage.");
+			LogWriter.getLogger().debug("Skipping index SNP " + indexSnp.getSnpName() + 
+				" - did not pass all filters for MAF, HWE and missing genotype percentage.");
 			return;
 		}
 
-		// checks the number of surrogates needed
-		int numSurrogates = 0;
-		for (SurrogateThreshold threshold : options
-				.getSortedSurrogateThresholds()) {
-			if (indexSnp.getPValue() < threshold.getPValue()) {
-				numSurrogates = threshold.getNumSurrogates();
-				break;
-			}
-		}
 
-		// checks which r^2 threshold to use
+
+		// determine which r^2 threshold to use		
+		// if no threshold is defined for associated p-value, an exception gets
+		// thrown
 		double r2Threshold = -1;
 		for (R2Threshold threshold : options.getSortedR2Thresholds()) {
 			if (indexSnp.getPValue() <= threshold.getPValue()) {
@@ -396,31 +389,82 @@ public class Pruner {
 				break;
 			}
 		}
-		// if no threshold is defined for associated p-value, an exception gets
-		// thrown
-		if (r2Threshold == -1) {
+		if (r2Threshold < 0) {
 			throw new PriorityPrunerException(
-					"No r^2-threshold defined for p-values equal to, or above: "
-							+ indexSnp.getPValue()
-							+ ".\nTo use the p-value dependent r^2-threshold option, please define thresholds valid for all p-values in the range. \nFor more information about r^2 options, type \"-h\".");
+					"No r-squared threshold defined for p-value of " + indexSnp.getSnpName() + ": "
+							+ indexSnp.getPValue());
 		}
 
-		// first count how many surrogates we already have (picked by previous
-		// index SNPs), and how many potential surrogates that are available
-		ArrayList<SnpInfo> surrogatesPicked = new ArrayList<SnpInfo>();
-		ArrayList<Result> potentialSurrogateResults = new ArrayList<Result>();
 
-		for (int i = 0; i < snpWorkUnit.getResults().size(); i++) {
-			Result result = snpWorkUnit.getResults().get(i);
+
+		// pick index SNP
+		indexSnp.setPicked(true);
+		indexSnp.setTagged(true);
+		indexSnp.setPickOrder(pickOrder);
+		pickOrder++;
+		LogWriter.getLogger().debug("Selecting index SNP " + indexSnp.getSnpName());
+		
+		// pick surrogates if necessary
+		pickSurrogates(indexSnp, r2Threshold, snpWorkUnit.getResults());
+		
+		// tags SNPs within the pruning window if their r^2-value are equal to
+		// or above the current r^2-threshold
+		int numTagged = 0;
+		for (Result result : snpWorkUnit.getResults()) {
 
 			// prints to LD output file
 			this.ldPrintStream.println(indexSnp.getSnpName()
-					+ "	"
+					+ "\t"
 					+ result.getPartnerSnpName()
-					+ "	"
+					+ "\t"
 					+ Math.abs(indexSnp.getPos()
-							- result.getPartnerSnp().getPos()) + "	"
-					+ result.getRSquared() + "	" + result.getDPrime());
+							- result.getPartnerSnp().getPos()) + "\t"
+							+ result.getRSquared() + "\t" + result.getDPrime());
+
+			if (result.getRSquared() >= r2Threshold) {
+				result.getPartnerSnp().setTagged(true);
+				numTagged++;
+				result.getPartnerSnp().addTaggedBy(indexSnp,
+						result.getRSquared());
+			}
+		}
+
+		LogWriter.getLogger().debug("Marking "+ numTagged + " SNP(s) as tagged.");
+	}
+	
+	private void pickSurrogates(SnpInfo indexSnp, double r2Threshold, ArrayList<Result> results){
+		
+		DecimalFormat decimal = new DecimalFormat("##.00");
+		
+		// determine number of surrogates needed
+		// if user specified that surrogates shouldn't be added for force
+		// included SNPs - set numSurrogates at 0
+		int numSurrogates = 0;
+		if (indexSnp.getForceInclude()
+				&& !options.getAddSurrogatesForForceIncludedSnps()) {
+			numSurrogates = 0;
+		}else{
+			for (SurrogateThreshold threshold : options.getSortedSurrogateThresholds()) {
+				if (indexSnp.getPValue() < threshold.getPValue()) {
+					numSurrogates = threshold.getNumSurrogates();
+					break;
+				}
+			}
+		}
+		
+		LogWriter.getLogger().debug("Surrogates needed: " + numSurrogates);
+		
+		if (numSurrogates == 0){
+			return;
+		}
+		
+		// count how many surrogates the index SNP already has (picked by previous
+		// index SNPs), and how many potential surrogates that are available.
+		// also write LD results to file
+		ArrayList<SnpInfo> surrogatesPicked = new ArrayList<SnpInfo>();
+		ArrayList<Result> potentialSurrogateResults = new ArrayList<Result>();
+		for (int i = 0; i < results.size(); i++) {
+			Result result = results.get(i);
 
 			// adds to list of already picked surrogates
 			if (result.getPartnerSnp().getPicked()
@@ -428,87 +472,30 @@ public class Pruner {
 					&& !result.getPartnerSnp().equals(indexSnp)) {
 				surrogatesPicked.add(result.getPartnerSnp());
 			}
+			
 			// adds to list of potential surrogates
 			if (!result.getPartnerSnp().getPicked()
 					&& result.getRSquared() >= r2Threshold
-					&& result.getPartnerSnp().getDesignScore() >= options
-							.getAbsoluteMinDesignScore()
+					&& (result.getPartnerSnp().getDesignScore() >= options.getMinDesignScore()
+						|| result.getPartnerSnp().getForceInclude())
 					&& !result.getPartnerSnp().equals(indexSnp)) {
 				potentialSurrogateResults.add(result);
 			}
 		}
-		// decides if index SNP as well as additional surrogates will be picked
-
-		// if we can't pick the index SNP due to low design score, add
-		// an additional surrogate instead (only if the
-		// "AddOneAdditionalSurrogate-option" is entered in the command line,
-		// the default is not to add an extra surrogate)
-		if (indexSnp.getDesignScore() < options.getAbsoluteMinDesignScore()
-				&& options.getOneAdditionalSurrogate()) {
-			numSurrogates++;
-
-			// if user specified that surrogates shouldn't be added for force
-			// included SNPs but still added the
-			// "AddOneAdditionalSurrogate-option", the later option will be
-			// overridden, and no additional surrogates will be added for force
-			// included SNPs
-			if (indexSnp.getForceInclude()
-					&& !options.getAddSurrogatesForForceIncludedSnps()) {
-
-				numSurrogates = 0;
-				LogWriter.getLogger().debug(
-						"Surrogates needed: " + numSurrogates);
-				LogWriter
-						.getLogger()
-						.debug("SNP \""
-								+ indexSnp.getSnpName()
-								+ "\" didn't pass the absolute minimum design score requirement. No surrogates are added since this SNP is force included.\nChoosing new index SNP.");
-				return;
-			} else {
-				LogWriter.getLogger().debug(
-						"Surrogates needed: " + numSurrogates);
-				LogWriter
-						.getLogger()
-						.debug("SNP \""
-								+ indexSnp.getSnpName()
-								+ "\" didn't pass the absolute minimum design score requirement. Choosing an extra surrogate instead.");
-			}
-
-			// if user specified that no additional surrogate should be
-			// added in case the index SNP didn't pass design score minimum
-			// - skip this one, and choose new index SNP instead
-		} else if (indexSnp.getDesignScore() < options
-				.getAbsoluteMinDesignScore()
-				&& !options.getOneAdditionalSurrogate()) {
-			LogWriter.getLogger().debug("Surrogates needed: " + numSurrogates);
-			LogWriter
-					.getLogger()
-					.debug("SNP \""
-							+ indexSnp.getSnpName()
-							+ "\" didn't pass the absolute minimum design score requirement. Choosing new index SNP.");
-			return;
-		} else {
-			// if user specified that surrogates shouldn't be added for force
-			// included SNPs - set numSurrogates to 0
-			if (indexSnp.getForceInclude()
-					&& !options.getAddSurrogatesForForceIncludedSnps()) {
-				numSurrogates = 0;
-			}
-			LogWriter.getLogger().debug("Surrogates needed: " + numSurrogates);
-
-			// picks index SNP
-			if (!indexSnp.getPicked()) {
-				indexSnp.setPicked(true);
-				indexSnp.setTagged(true);
-				indexSnp.setPickOrder(pickOrder);
-				pickOrder++;
-				LogWriter.getLogger().debug(
-						"Picking index SNP \"" + indexSnp.getSnpName() + "\"");
-			}
-		}
+		LogWriter.getLogger().debug("Surrogates available: " + potentialSurrogateResults.size());
+		
+		
 		// calculates scaled scores for potential surrogates and sorts them
-		recalculateScores(potentialSurrogateResults);
-		Collections.sort(potentialSurrogateResults, new ScoreSorter());
+		if (options.getMetrics().size() > 0){
+			recalculateScores(potentialSurrogateResults);
+			Collections.sort(potentialSurrogateResults, new ScoreSorter());
+		}
+		// sort by r-squared
+		else{
+			
+			Collections.sort(potentialSurrogateResults, new RSquaredSorter());
+		}
+		
 		// now pick additional surrogates
 		for (Result result : potentialSurrogateResults) {
 			if (surrogatesPicked.size() < numSurrogates) {
@@ -517,53 +504,31 @@ public class Pruner {
 				result.getPartnerSnp().setPickOrder(pickOrder);
 				pickOrder++;
 				surrogatesPicked.add(result.getPartnerSnp());
-				if (result.getPartnerSnp().getForceInclude()) {
-					LogWriter.getLogger().debug(
-							"Picking surrogate \""
+
+				LogWriter.getLogger().debug(
+							"Selecting surrogate "
 									+ result.getPartnerSnp().getSnpName()
-									+ "\" with scaled score: "
-									+ result.getPartnerSnp().getScore()
-									+ " (force included SNP)");
-					LogWriter.getLogger().debug(
-							"r^2: " + result.getRSquared() + " and D': "
-									+ result.getDPrime());
-				} else {
-					LogWriter.getLogger().debug(
-							"Picking surrogate \""
-									+ result.getPartnerSnp().getSnpName()
-									+ "\" with scaled score: "
-									+ result.getPartnerSnp().getScore());
-					LogWriter.getLogger().debug(
-							"r^2: " + result.getRSquared() + " and D': "
-									+ result.getDPrime());
-				}
+							+ " with r^2: " + decimal.format(result.getRSquared()));
 			}
 		}
 
-		// tags SNPs within the pruning window if their r^2-value are equal to
-		// or above the current r^2-threshold
-
-		// if index SNP didn't get picked, the partner SNP is marked as tagged
-		// by the first surrogate picked. Since r^2-value is unknown in this
-		// case, a default value of -1 is entered in the "TaggedBy-list" to
-		// indicate this
-		if (!indexSnp.getPicked() && surrogatesPicked.size() > 0) {
-			for (Result result : snpWorkUnit.getResults()) {
-				if (result.getRSquared() >= r2Threshold
-						&& !result.getPartnerSnp().equals(indexSnp)) {
-					result.getPartnerSnp().setTagged(true);
-					result.getPartnerSnp().addTaggedBy(surrogatesPicked.get(0),
-							-1);
-				}
-			}
-			// if index SNP got picked, the SNP is marked as tagged by it
-		} else if (indexSnp.getPicked()) {
-			for (Result result : snpWorkUnit.getResults()) {
-				if (result.getRSquared() >= r2Threshold) {
-					result.getPartnerSnp().setTagged(true);
-					result.getPartnerSnp().addTaggedBy(indexSnp,
-							result.getRSquared());
-				}
+	}
+	
+	private class RSquaredSorter implements Comparator<Result> {
+		@Override
+		public int compare(Result x, Result y) {
+			if (x.getPartnerSnp().getForceInclude() == y.getPartnerSnp()
+					.getForceInclude()) {
+						if (x.getRSquared() == y.getRSquared()) {
+							return (y.getPartnerSnp().getSnpName().compareTo(x
+									.getPartnerSnp().getSnpName()));
+						} else {
+							return (Double.compare(y.getRSquared(), x.getRSquared()));
+						}
+			} else {
+				return (Boolean.valueOf(y.getPartnerSnp().getForceInclude())
+						.compareTo(Boolean.valueOf(x.getPartnerSnp()
+								.getForceInclude())));
 			}
 		}
 	}
