@@ -472,10 +472,10 @@ public class CommandLineOptions {
 
 	private void printHelp(){
 		
-		System.out.println("PriorityPruner v0.1.0\r\n");
+		System.out.println("PriorityPruner v0.1.1\r\n");
 		System.out.println("(c) 2014 Christopher K. Edlund, Malin Anker, Fredrick R. Schumacher, W. James Gauderman, David V. Conti\r\n");
 		System.out.println("For a list of options, please go to:");
-		System.out.println("            http://sourceforge.net/projects/prioritypruner/\r\n");
+		System.out.println("            http://prioritypruner.sourceforge.net\r\n");
 		System.out.println("Questions, comments, and suggestions should be emailed to:");
 		System.out.println("            PriorityPruner-help@lists.sourceforge.net");
 		
