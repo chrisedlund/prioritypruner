@@ -130,9 +130,9 @@ public class TPlink extends Genotypes {
 				if (splitString.length != 2) {
 					reader.close();
 					throw new PriorityPrunerException(
-							"Invalid number of columns specified in file \""
+							"Invalid number of columns specified in "
 									+ filePath
-									+ "\" at line "
+									+ " at line "
 									+ (index)
 									+ ". Expected 2 columns but found: "
 									+ splitString.length + ".");
@@ -261,7 +261,7 @@ public class TPlink extends Genotypes {
 	private void parseTped(String filePath, SnpListFile snpListFile)
 			throws PriorityPrunerException {
 		BufferedReader reader = null;
-		HashMap<String,Integer> uniqueSnpNameHash = new HashMap<String,Integer>();
+		//HashMap<String,Integer> uniqueSnpNameHash = new HashMap<String,Integer>();
 		
 		int notFoundInSnpInputTable = 0;
 		try {
@@ -295,11 +295,11 @@ public class TPlink extends Genotypes {
 
 				// stores chromosome X as "23"
 				String chr = new String(splitString[0]);
-				if (chr.toUpperCase().equals("X")
-						|| chr.toUpperCase().equals("CHRX")
-						|| chr.toUpperCase().equals("23")) {
-					chr = "23";
-				}
+//				if (chr.toUpperCase().equals("X")
+//						|| chr.toUpperCase().equals("CHRX")
+//						|| chr.toUpperCase().equals("23")) {
+//					chr = "23";
+//				}
 
 				// checks if all chromosomes should be parsed or if a specific
 				// chromosome is specified in command line, and if it in that
@@ -313,12 +313,12 @@ public class TPlink extends Genotypes {
 					
 					String snpName = new String(splitString[1]);
 					
-					//make sure there are no duplicate snps
-					if (uniqueSnpNameHash.containsKey(snpName)){
-						throw new PriorityPrunerException("Duplicate SNP found in tped file: " + snpName);
-					}else{
-						uniqueSnpNameHash.put(snpName, 0);
-					}
+//					//make sure there are no duplicate snps
+//					if (uniqueSnpNameHash.containsKey(snpName)){
+//						throw new PriorityPrunerException("Duplicate SNP found in tped file: " + snpName);
+//					}else{
+//						uniqueSnpNameHash.put(snpName, 0);
+//					}
 					
 					int pos;
 					try {
@@ -383,6 +383,15 @@ public class TPlink extends Genotypes {
 					if (snpInfo != null) {
 						SnpGenotypes snpGenotypesLocal = new SnpGenotypes(
 								snpName, snpInfo, allele1, allele2, genotypes);
+						if (snpInfo.getSnpGenotypes() != null){
+							throw new PriorityPrunerException(
+									"Duplicated SNP \""
+											+ snpName
+											+ "\" at line "
+											+ line
+											+ " in TPED file. " 
+											+ "The combination of snpname, chr, pos, allele1/allele2 must be unique.");
+						}
 						snpInfo.setSnpGenotypes(snpGenotypesLocal);
 						snpInfo.setInTped(true);
 						snpGenotypes.add(snpGenotypesLocal);
@@ -396,6 +405,8 @@ public class TPlink extends Genotypes {
 			
 			
 			LogWriter.getLogger().info("Excluding " + notFoundInSnpInputTable + " SNPs missing from [ " + snpListFile.getFilePath() + " ]");
+			
+			
 			LogWriter.getLogger().info(snpGenotypes.size() + " (of " + (line - 1) + ") SNPs to be included from [ " + filePath + " ]");
 			
 		} catch (FileNotFoundException e) {

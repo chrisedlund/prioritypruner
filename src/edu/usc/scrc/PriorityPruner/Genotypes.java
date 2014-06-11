@@ -66,4 +66,9 @@ public class Genotypes {
 	public ArrayList<Individual> getKeptFounders(){
 		return keptFounders;
 	}
+	
+	
+
+
+	
 }

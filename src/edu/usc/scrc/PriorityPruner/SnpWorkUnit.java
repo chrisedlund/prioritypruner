@@ -53,10 +53,10 @@ public class SnpWorkUnit {
 	//private ArrayList<Integer> founderIndices = new ArrayList<Integer>();
 	//private ArrayList<String> subjectSexes = new ArrayList<String>();
 	private ArrayList<Individual> keptFounders;
-	private double minMaf;
-	private double minimumHardyWeinbergPvalue;
-	private double minimumGenotypePercentage;
-	private boolean indexSnpPassed = true;
+//	private double minMaf;
+//	private double minimumHardyWeinbergPvalue;
+//	private double minimumGenotypePercentage;
+	//private boolean indexSnpPassed = true;
 
 	// variables for r^2 calculation
 	private double[] known = new double[5];
@@ -93,17 +93,13 @@ public class SnpWorkUnit {
 	 *             of genotypes
 	 */
 	public SnpWorkUnit(String snpName, ArrayList<SnpGenotypes> genotypesList,
-			int referenceSNPIndex, ArrayList<Individual> keptFounders, double minMaf,
-			double minimumHardyWeinbergPvalue, double minimumGenotypePercentage)
+			int referenceSNPIndex, ArrayList<Individual> keptFounders)
 			throws PriorityPrunerException {
 
 		this.snpName = snpName;
 		this.currentGenotypes = genotypesList;
 		this.referenceSNPIndex = referenceSNPIndex + 1;
 		this.keptFounders = keptFounders;
-		this.minMaf = minMaf;
-		this.minimumHardyWeinbergPvalue = minimumHardyWeinbergPvalue;
-		this.minimumGenotypePercentage = minimumGenotypePercentage;
 		this.snpInfo = currentGenotypes.get(referenceSNPIndex).getSnpInfo();
 		//convertGenotypes(currentGenotypes);
 	}
@@ -126,12 +122,12 @@ public class SnpWorkUnit {
 		} else {
 			// if calculations of maf, hwe, and missing percentage have not
 			// already been done for current SNP - calculate this!
-			for (SnpGenotypes genotypes : currentGenotypes) {
-				if (!genotypes.getCalculationDone()) {
-					//getMafHweMissingPercent(genotype, founderIndices,subjectSexes);
-					getMafHweMissingPercentCompressed(genotypes);
-				}
-			}
+//			for (SnpGenotypes genotypes : currentGenotypes) {
+//				if (!genotypes.getCalculationDone()) {
+//					//getMafHweMissingPercent(genotype, founderIndices,subjectSexes);
+//					genotypes.calculateMafHweMissingPercentCompressed(keptFounders);
+//				}
+//			}
 			
 			// add "4" to heterozygous genotypes
 			//linkageToChrom();
@@ -139,9 +135,9 @@ public class SnpWorkUnit {
 
 		// initiates calculations, will return false if the index SNP didn't
 		// pass the user defined filters
-		if (!calculateResults()) {
-			indexSnpPassed = false;
-		}
+		calculateResults();
+			//indexSnpPassed = false;
+		//}
 
 		// deletes the LD-formats, since they're memory consuming
 		for (SnpGenotypes genotype : currentGenotypes) {
@@ -247,16 +243,16 @@ public class SnpWorkUnit {
 	 * @return flag indicating if SNP is valid - returns true if it is, false
 	 *         otherwise.
 	 */
-	private boolean isSnpValid(SnpGenotypes genotypes) {
-
-		if ((genotypes.getMaf() >= minMaf)
-				&& (((1 - genotypes.getMissingPercent())) >= minimumGenotypePercentage)
-				&& (genotypes.getHwePvalue() >= this.minimumHardyWeinbergPvalue)) {
-			return true;
-		} else {
-			return false;
-		}
-	}
+//	private boolean isSnpValid(SnpGenotypes genotypes) {
+//
+//		if ((genotypes.getMaf() >= minMaf)
+//				&& (((1 - genotypes.getMissingPercent())) >= minimumGenotypePercentage)
+//				&& (genotypes.getHwePvalue() >= this.minimumHardyWeinbergPvalue)) {
+//			return true;
+//		} else {
+//			return false;
+//		}
+//	}
 
 	/**
 	 * Method ported from Haploview to calculate LD. Loops through each SNP and
@@ -267,15 +263,15 @@ public class SnpWorkUnit {
 	 * 
 	 * @return flag indicating if index SNP is valid
 	 */
-	private boolean calculateResults() {
+	private void calculateResults() {
 
 		// gets genotypes of index SNP
 		SnpGenotypes referenceGenotypes = currentGenotypes
 				.get(referenceSNPIndex - 1);
-
-		if (isSnpValid(referenceGenotypes)) {
+//
+//		if (isSnpValid(referenceGenotypes)) {
 			for (SnpGenotypes genotypes : currentGenotypes) {
-				if (isSnpValid(genotypes)) {
+				//if (isSnpValid(genotypes)) {
 					// if both index SNP and the second SNP are valid (i.e.,
 					// they passed the user defined filter for maf, hwe and
 					// missing genotype percentage), LD calculation for this
@@ -302,107 +298,14 @@ public class SnpWorkUnit {
 						// valid results get added to a result list
 						addResult(result);
 					}
-				}
+				//}
 			}
-			return true;
-		} else {
-			return false;
-		}
+//			return true;
+//		} else {
+//			return false;
+//		}
 	}
 	
-	/**
-	 * Method ported from Haploview. Calculates maf, hwe and missing genotype
-	 * percentage for the current SNP.
-	 * 
-	 * @param genotypes
-	 *            the SNP to be evaluated, stored as a SnpGenotypes-object
-	 * @param founderIndices
-	 *            indices of founder subjects
-	 * @param subjectSexes
-	 *            gender of the subjects
-	 * @throws PriorityPrunerException
-	 *             if an invalid genotype is encountered in a SNP
-	 */
-
-	private void getMafHweMissingPercentCompressed(SnpGenotypes genotypes)
-			throws PriorityPrunerException {
-		
-		//byte allele1 = 0;
-		//byte allele2 = 0;
-		int numAllele1 = 0;
-		int numAllele2 = 0;
-		int numMissing = 0;
-		int numChromosomes = 0;
-		int[] founderHomCount = new int[5];
-		int founderHetCount = 0;
-
-		// initialize founderHomCount array to contain all zeros
-		for (int i = 0; i < 5; i++) {
-			founderHomCount[i] = 0;
-		}
-
-		for (int f = 0; f < keptFounders.size(); f++) {
-			// at the moment, "i" will equal "f", since we only support
-			// founders. This might be updated in future versions.
-			Individual founder = keptFounders.get(f);
-			
-			// counts genotypes for hwe (only for diploids)
-			boolean haploid  = genotypes.getSnpInfo().isChrX() && founder.getSex() == Individual.Sex.MALE;
-			
-			byte genotype = genotypes.getByteGenotype(f);
-			
-			if (!haploid) {
-				if (genotype != 0) {
-					numChromosomes+= 2;
-					if (genotype == 3) {
-						founderHetCount++;
-						numAllele1++;
-						numAllele2++;
-					} else if (genotype == 1){
-						founderHomCount[1]++;
-						numAllele1+=2;
-					} else if (genotype == 2){
-						founderHomCount[2]++;
-						numAllele2+=2;
-					}
-				}else{
-					numMissing+= 2;
-				}
-			}else{
-				
-				if (genotype != 0) {
-					numChromosomes+= 1;
-					if (genotype == 1){
-						numAllele1+=1;
-					} else if (genotype == 2){
-						numAllele2+=1;
-					}
-				}else{
-					numMissing+= 1;
-				}
-			}
-		}
-
-		// sets the values calculated, as well as a flag indicating that
-		// calculation is completed, in the SnpGenotypes-object
-
-		if (numAllele1 > numAllele2) {
-			genotypes.setMaf((double) numAllele2
-					/ (double) (numAllele1 + numAllele2));
-			genotypes.setMinorAllele((byte)2);
-			genotypes.setMajorAllele((byte)1);
-		} else {
-			genotypes.setMaf((double) numAllele1
-					/ (double) (numAllele1 + numAllele2));
-			genotypes.setMinorAllele((byte)1);
-			genotypes.setMajorAllele((byte)2);
-		}
-		genotypes.setMissingPercent((double) numMissing / numChromosomes);
-		genotypes.setHwePvalue(this.getHweValue(founderHomCount,
-				founderHetCount));
-		genotypes.setCalculationDone();
-		//System.out.println(genotypes.getSnpName() + "\t" + genotypes.getMissingPercent() + "\t" + genotypes.getHwePvalue() + "\t" + genotypes.getMaf());
-	}
 
 /*
 	*//**
@@ -1020,131 +923,6 @@ public class SnpWorkUnit {
 		}
 	}
 
-	/**
-	 * Method ported from Haploview. Used for calculating HWE.
-	 */
-	private double getHweValue(int[] parentHom, int parentHet)
-			throws PriorityPrunerException {
-		// ie: 11 13 31 33 -> homA =1 homB = 1 parentHet=2
-		int homA = 0;
-		int homB = 0;
-		double pvalue = 0;
-		for (int i = 0; i < parentHom.length; i++) {
-			if (parentHom[i] != 0) {
-				if (homA > 0) {
-					homB = parentHom[i];
-				} else {
-					homA = parentHom[i];
-				}
-			}
-		}
-
-		// calculate p value from homA, parentHet and homB
-		if (homA + parentHet + homB <= 0) {
-			pvalue = 0;
-		} else {
-			pvalue = hwCalculate(homA, parentHet, homB);
-		}
-		return pvalue;
-	}
-
-	/**
-	 * Ported from Haploview. Calculates exact two-sided Hardy-Weinberg p-value.
-	 * Parameters are number of genotypes, number of rare alleles observed and
-	 * number of heterozygotes observed.
-	 * 
-	 * (c) 2003 Jan Wigginton, Goncalo Abecasis
-	 */
-	private double hwCalculate(int obsAA, int obsAB, int obsBB)
-			throws PriorityPrunerException {
-
-		int diplotypes = obsAA + obsAB + obsBB;
-		int rare = (obsAA * 2) + obsAB;
-		int hets = obsAB;
-
-		// make sure "rare" allele is really the rare allele
-		if (rare > diplotypes) {
-			rare = 2 * diplotypes - rare;
-		}
-
-		// make sure numbers aren't screwy
-		if (hets > rare) {
-			throw new PriorityPrunerException("HW test: " + hets
-					+ "heterozygotes but only " + rare + "rare alleles.");
-		}
-		double[] tailProbs = new double[rare + 1];
-		for (int z = 0; z < tailProbs.length; z++) {
-			tailProbs[z] = 0;
-		}
-
-		// start at midpoint
-		// all the casting is to make sure we don't overflow ints if there are
-		// 10's of 1000's of inds
-		int mid = (int) ((double) rare * (double) (2 * diplotypes - rare) / (double) (2 * diplotypes));
-
-		// check to ensure that midpoint and rare alleles have same parity
-		if (((rare & 1) ^ (mid & 1)) != 0) {
-			mid++;
-		}
-
-		int het = mid;
-		int hom_r = (rare - mid) / 2;
-		int hom_c = diplotypes - het - hom_r;
-
-		// calculate probability for each possible observed heterozygote
-		// count up to a scaling constant, to avoid underflow and overflow
-		tailProbs[mid] = 1.0;
-		double sum = tailProbs[mid];
-
-		for (het = mid; het > 1; het -= 2) {
-			tailProbs[het - 2] = (tailProbs[het] * het * (het - 1.0))
-					/ (4.0 * (hom_r + 1.0) * (hom_c + 1.0));
-			sum += tailProbs[het - 2];
-			// 2 fewer hets for next iteration -> add one rare and one common
-			// homozygote
-			hom_r++;
-			hom_c++;
-		}
-
-		het = mid;
-		hom_r = (rare - mid) / 2;
-		hom_c = diplotypes - het - hom_r;
-
-		for (het = mid; het <= rare - 2; het += 2) {
-			tailProbs[het + 2] = (tailProbs[het] * 4.0 * hom_r * hom_c)
-					/ ((het + 2.0) * (het + 1.0));
-			sum += tailProbs[het + 2];
-			// 2 more hets for next iteration -> subtract one rare and one
-			// common homozygote
-			hom_r--;
-			hom_c--;
-		}
-
-		for (int z = 0; z < tailProbs.length; z++) {
-			tailProbs[z] /= sum;
-		}
-
-		double top = tailProbs[hets];
-		for (int i = hets + 1; i <= rare; i++) {
-			top += tailProbs[i];
-		}
-
-		double otherSide = tailProbs[hets];
-		for (int i = hets - 1; i >= 0; i--) {
-			otherSide += tailProbs[i];
-		}
-
-		if (top > 0.5 && otherSide > 0.5) {
-			return 1.0;
-		} else {
-			if (top < otherSide) {
-				return top * 2;
-			} else {
-				return otherSide * 2;
-			}
-		}
-	}
-
 	// public getters and setters for private fields of this class
 
 	public void addResult(Result result) {
@@ -1167,7 +945,7 @@ public class SnpWorkUnit {
 		this.results = results;
 	}
 
-	public boolean getIndexSnpPassed() {
-		return indexSnpPassed;
-	}
+//	public boolean getIndexSnpPassed() {
+//		return indexSnpPassed;
+//	}
 }

@@ -264,4 +264,7 @@ public class SnpInfo implements Comparable<SnpInfo> {
 	public boolean isChrX() {
 		return chrX;
 	}
+	
+
+
 }

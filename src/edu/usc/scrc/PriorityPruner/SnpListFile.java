@@ -223,11 +223,11 @@ public class SnpListFile {
 				}
 				
 				// in case chromosome X is encountered it gets recoded to "23"
-				if (chr.equals("X")
-						|| chr.equals("CHRX")
-						|| chr.equals("23")) {
-					chr = "23";
-				}
+//				if (chr.equals("X")
+//						|| chr.equals("CHRX")
+//						|| chr.equals("23")) {
+//					chr = "23";
+//				}
 				
 				// stores parsed chromosomes
 				if (!chromsomeHash.contains(chr)) {

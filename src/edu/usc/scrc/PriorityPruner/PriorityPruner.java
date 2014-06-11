@@ -62,7 +62,7 @@ public class PriorityPruner {
 				LogWriter
 						.getLogger()
 						.info("Welcome to PriorityPruner version 0.1.0 \n\nFor latest version please visit: http://sourceforge.net/projects/prioritypruner/\n(C) 2014 Christopher K. Edlund et al., The MIT License (MIT)\n-------------------------------------------------------------------------------\n");
-				LogWriter.getLogger().warn(e.getMessage());				
+				LogWriter.getLogger().warn("ERROR: " + e.getMessage());				
 				System.exit(0);
 			}
 

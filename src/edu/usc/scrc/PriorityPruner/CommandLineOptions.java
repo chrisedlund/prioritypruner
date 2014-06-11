@@ -58,7 +58,7 @@ public class CommandLineOptions {
 	private static CommandLineOptions singletonObject = null;
 	private long maxDistance = 500000;
 	private double minMaf = 0;
-	private double minHwe = 0;
+	//private double minHwe = 0;
 	private double minSnpCallRate = 0.1;
 	private double minDesignScore = 0;
 	//private double absoluteMinDesignScore = 0;
@@ -77,6 +77,7 @@ public class CommandLineOptions {
 	private String tfile = null;
 	private Option[] parsedOptions = null;
 	private boolean verbose = false;
+	private boolean outputLDTable = false;
 	private String remove = null;
 	private String keep = null;
 	private double keepPercentage = -1;
@@ -245,8 +246,8 @@ public class CommandLineOptions {
 				"Minimum minor allele frequency (MAF) for a SNP to be selected. Does not apply to force-selected SNPs. Default is 0.", false, "min_maf");
 		
 		//min-hwe
-		Option minHwPvalue = createOptionOneName(1, "float",
-				"Minimum Hardy-Weinberg p-value for a SNP to be selected. Does not apply to force-selected SNPs. Default is 0.", false, "min_hwe");
+//		Option minHwPvalue = createOptionOneName(1, "float",
+//				"Minimum Hardy-Weinberg p-value for a SNP to be selected. Does not apply to force-selected SNPs. Default is 0.", false, "min_hwe");
 		
 		//min-snp-callrate
 		Option minSnpCallRate = createOptionOneName(1, "float",
@@ -341,6 +342,14 @@ public class CommandLineOptions {
 				"Specify that detailed information should be printed out and stored in the log file",
 				false, "verbose");
 		
+		//outputLDTable
+		Option outputLDTable = createOptionOneName(
+				0,
+				"none",
+				"Directs the software to output a table containing all LD calculations made by the software",
+				false, "ld");
+		
+		
 		//remove
 		Option remove = createOptionOneName(
 				1,
@@ -385,14 +394,14 @@ public class CommandLineOptions {
 		OptionGroup r2Group = new OptionGroup();
 		r2Group.addOption(r2Threshold);
 		r2Group.addOption(fixedR2);
-		r2Group.setRequired(true);
+		//r2Group.setRequired(true);
 
 		// adds all options to an option collection
 		
 
 		options.addOption(maxDistance);
 		options.addOption(minMaf);
-		options.addOption(minHwPvalue);
+		//options.addOption(minHwPvalue);
 		options.addOption(minSnpCallRate);
 		options.addOption(minDesignScore);
 		//options.addOption(absMinDesignScore);
@@ -409,6 +418,7 @@ public class CommandLineOptions {
 		options.addOption(tfile);
 		options.addOption(additionalSurrogates);
 		options.addOption(verbose);
+		options.addOption(outputLDTable);
 		options.addOption(noSurrogatesForForceIncluded);
 		options.addOption(r2Threshold);
 		options.addOption(fixedR2);
@@ -439,7 +449,7 @@ public class CommandLineOptions {
 			CommandLine helpCommandLine = new GnuParser().parse(helpOptions,
 					args, true);
 			//String empty = "";
-			if (helpCommandLine.hasOption("h") || args.length == 0) {
+			if (helpCommandLine.hasOption("h")) {
 				printHelp();
 				return true;
 			} // checks list of arguments manually to make sure help is printed
@@ -526,11 +536,11 @@ public class CommandLineOptions {
 			}
 
 			// parse min_hwe
-			if (commandLine.hasOption("min_hwe")) {
-				this.setMinHwe(getDoubleArgument("min_hwe",
-						commandLine.getOptionValue("min_hwe"), 0, 1));
-				checkInput(1, "min_hwe", commandLine);
-			}
+//			if (commandLine.hasOption("min_hwe")) {
+//				this.setMinHwe(getDoubleArgument("min_hwe",
+//						commandLine.getOptionValue("min_hwe"), 0, 1));
+//				checkInput(1, "min_hwe", commandLine);
+//			}
 
 			// parses min_snp_callrate
 			if (commandLine.hasOption("min_snp_callrate")) {
@@ -623,7 +633,7 @@ public class CommandLineOptions {
 				// recoding chromosome X-representations to "23"
 				if (value.toUpperCase().equals("X")
 						|| value.toUpperCase().equals("CHRX")) {
-					value = "23";
+					//value = "23";
 				}
 				// if chromosome Y or mitochondrial DNA is encountered, an
 				// exception is thrown
@@ -712,6 +722,11 @@ public class CommandLineOptions {
 			// parses verbose
 			if (commandLine.hasOption("verbose")) {
 				this.setVerbose(true);
+			}
+			
+			// parse outputLDTable
+			if (commandLine.hasOption("ld")){
+				this.setOutputLDTable(true);
 			}
 
 			// parse remove
@@ -815,7 +830,7 @@ public class CommandLineOptions {
 	
 		// check snpTable
 		if (this.snpTablePath == null){
-			messages += "A SNP table file must be specified with the --snpTable option.\r\n";
+			messages += "A SNP input table file must be specified with the --snp_table option.\r\n";
 		}
 		
 		if (messages.length() >0){
@@ -1072,13 +1087,13 @@ public class CommandLineOptions {
 		this.minMaf = minMaf;
 	}
 
-	public double getMinHwe() {
-		return minHwe;
-	}
-
-	public void setMinHwe(double minHwe) {
-		this.minHwe = minHwe;
-	}
+//	public double getMinHwe() {
+//		return minHwe;
+//	}
+//
+//	public void setMinHwe(double minHwe) {
+//		this.minHwe = minHwe;
+//	}
 
 	public double getMinSnpCallRate() {
 		return minSnpCallRate;
@@ -1204,6 +1219,15 @@ public class CommandLineOptions {
 		this.verbose = verbose;
 	}
 
+	public boolean isOutputLDTable() {
+		return this.outputLDTable;
+	}
+
+	public void setOutputLDTable(boolean outputLDTable) {
+		this.outputLDTable = outputLDTable;
+	}
+
+	
 	public String getRemove() {
 		return remove;
 	}

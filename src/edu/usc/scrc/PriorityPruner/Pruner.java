@@ -47,7 +47,7 @@ public class Pruner {
 	private Genotypes genotypes;
 	private int pickOrder = 1;
 	private CommandLineOptions options = CommandLineOptions.getInstance();
-	private PrintStream ldPrintStream;
+	private BufferedWriter ldWriter = null;
 
 	/**
 	 * Constructor for Pruner. Initiates parsing of genotype and family data by
@@ -67,15 +67,62 @@ public class Pruner {
 		
 		try{
 			checkSnpsAreInGenotypeFile();
-			createLdFile();
+			
+			//LogWriter.getLogger().info("Calculating SNP statistics");
+			// calculate maf, call rate, hwe for all snps
+			// already been done for current SNP - calculate this!
+			int numFailMaf = 0;
+			int numFailHwe = 0;
+			int numFailCallRate = 0;
+			int numFail = 0;
+			for (SnpGenotypes g : this.genotypes.getSnpGenotypes()) {
+					//getMafHweMissingPercent(genotype, founderIndices,subjectSexes);
+				g.calculateMafHweMissingPercentCompressed(genotypes.getKeptFounders());
+				boolean fail = false;
+				if (g.getMaf() < options.getMinMaf()){
+					numFailMaf++;
+					fail = true;
+				}
+//				if (g.getHwePvalue() < options.getMinHwe()){
+//					numFailHwe++;
+//					fail = true;
+//				}
+				if ( (1 - g.getMissingPercent()) <  options.getMinSnpCallRate()){
+					numFailCallRate++;
+					fail = true;
+				}
+				if (fail){
+					g.setValid(false);
+					numFail++;
+				}
+				
+				//g.checkSnpValid(options.getMinMaf(),options.getMinSnpCallRate(), options.getMinHwe());
+			}
+			if (numFailMaf >0){
+				LogWriter.getLogger().info(numFailMaf + " SNPs failed frequency test ( MAF < " + options.getMinMaf() + " )");
+			}
+//			if (numFailHwe >0){
+//				LogWriter.getLogger().info(numFailMaf + " SNPs failed HWE test ( p < " + options.getMinHwe() + " )");
+//			}
+			if (numFailCallRate >0){
+				LogWriter.getLogger().info(numFailMaf + " SNPs failed callrate test ( callrate < " + options.getMinSnpCallRate() + " )");
+			}
+			if (numFail > 0){
+				LogWriter.getLogger().info("After filtering, there are " + (this.genotypes.getSnpGenotypes().size() - numFail) + " SNPs");
+			}
+			
+			
+			if (options.isOutputLDTable()){
+				createLdFile();
+			}
 			startPruning();
 		}catch (PriorityPrunerException e){
 			throw e;
 		}finally{
-			if (ldPrintStream != null){
-				
-					ldPrintStream.close();
-	
+			if (ldWriter != null){
+				try{
+					ldWriter.close();
+				}catch(IOException e){e.printStackTrace();}
 			}
 		}
 	}
@@ -90,21 +137,22 @@ public class Pruner {
 	 */
 	private void createLdFile() throws PriorityPrunerException {
 
-		File ldFile;
-		FileOutputStream ldOutputStream;
-		try {
-			ldFile = new File(options.getOutputPrefix() + ".ld");
-			ldOutputStream = new FileOutputStream(ldFile);
 
-			if (!ldFile.exists()) {
-				ldFile.createNewFile();
-			}
-			ldPrintStream = new PrintStream(ldOutputStream);
-			this.ldPrintStream.println("index_snp" + "\t" + "tagged_snp" + "\t" + "distance" + "\t" + "r^2" + "\t" + "D'");
+		
+		try {
+			// creates output file
+			LogWriter.getLogger().info("Writing LD metrics to [ " + options.getOutputPrefix() + ".ld" + " ]");
+			File outputFile = new File(options.getOutputPrefix() + ".ld");
+			ldWriter = new BufferedWriter(new FileWriter(outputFile));
+			
+			ldWriter.write("index_snp_name" + "\t" + "index_snp_chr" + "\t" + "index_snp_pos" + "\t"
+			+ "index_snp_a1" + "\t" + "index_snp_a2" + "\t" + "partner_snp_name" + "\t" + 
+					"partner_snp_chr" + "\t" + "partner_snp_pos" + "\t" + "partner_snp_a1" + "\t"
+			+ "partner_snp_a2" + "\t" + "r^2" + "\t" + "D'" + "\n");
+			
 		} catch (IOException e) {
 			throw new PriorityPrunerException("Could not create file: "
-					+ e.getMessage()
-					+ "\nPlease check that correct file path is provided.");
+					+ e.getMessage());
 		}
 		
 	}
@@ -138,6 +186,7 @@ public class Pruner {
 	 * 
 	 * @throws PriorityPrunerException
 	 *             if invalid information is encountered
+	 * @throws IOException 
 	 */
 	private void startPruning() throws PriorityPrunerException {
 
@@ -167,7 +216,7 @@ public class Pruner {
 								+ " - already tagged or picked");
 			}
 		}
-		ldPrintStream.close();
+
 		LogWriter.getLogger().debug(
 				"--------------------------------------------------");
 
@@ -189,6 +238,7 @@ public class Pruner {
 		
 		try {
 			// creates output file
+			//DecimalFormat df = new DecimalFormat("0.00##");
 			
 			File outputFile = new File(options.getOutputPrefix() + ".results");
 			writer = new BufferedWriter(new FileWriter(outputFile));
@@ -196,17 +246,35 @@ public class Pruner {
 			LogWriter.getLogger().info("Writing pruning results to [ " + options.getOutputPrefix() + ".results" + " ]");
 			// writes to log and output files
 			
-			writer.write("name" + "\t" + "chr" + "\t" + "pos" + "\t" + "a1" + "\t" + "a2" + "\t" +
-						"p" + "\t" + "forceSelect" +  "\t" + "tagged" + "\t" + "picked" +
-					"\t" + "pickOrder\n");
+			writer.write("name" + "\t" + "chr" + "\t" + "pos" + "\t" + "a1" + "\t" + "a2" + "\t" 
+						+ "tagged" + "\t" + "selected" + "\t" + "best_tag" + "\t" + "r^2" + "\n" );
 			for (SnpInfo snp : snpListFile.getSnps()) {
-				writer.write(snp.getSnpName() + "\t"
-						+ snp.getChr() + "\t" + snp.getPos() + "\t"
-						+ snp.getAllele1() + "\t" + snp.getAllele2() + "\t"
-						+ snp.getPValue() + "\t"
-						+ snp.getForceInclude()
-						+ "\t" + snp.getTagged() + "\t" + snp.getPicked()
-						+ "\t" + snp.getPickOrder() + "\n");
+						
+				String bestTag = "NA";
+				String r2 = "NA";
+				if (snp.getTaggedByList().size() > 0){
+					Double bestR2 = new Double(-1);
+					for (SnpR2Pair tag: snp.getTaggedByList()){
+						if (tag.getrSquared() > bestR2){
+							bestR2 = tag.getrSquared();
+							bestTag = tag.getSnp().getSnpName();
+						}
+					}
+					r2 = bestR2.toString();
+					//primaryTag = snp.getTaggedByList().
+				}
+				
+				if (snp.getSnpGenotypes().isValid() || snp.getForceInclude()){
+					writer.write(snp.getSnpName() + "\t"
+							+ snp.getChr() + "\t" 
+							+ snp.getPos() + "\t"
+							+ snp.getAllele1() + "\t" 
+							+ snp.getAllele2() + "\t"
+							+ (snp.getTagged() ? "1" : "0") + "\t" 
+							+ (snp.getPicked() ? "1" : "0") + "\t"
+							+ bestTag + "\t" 
+							+ r2 + "\n");
+				}
 			}
 		} catch (IOException e) {
 			throw new PriorityPrunerException("Could not create file: "
@@ -288,6 +356,7 @@ public class Pruner {
 	 *            current index SNP
 	 * @throws PriorityPrunerException
 	 *             if problems are encountered during LD calculation
+	 * @throws IOException 
 	 */
 	private void prune(SnpInfo indexSnp) throws PriorityPrunerException {
 
@@ -296,6 +365,13 @@ public class Pruner {
 				!indexSnp.getForceInclude()){
 			LogWriter.getLogger().debug("Skipping index SNP " + indexSnp.getSnpName() + 
 					"- design score is less than threshold.");
+			return;
+		}
+		
+		// check if the index SNP passes maf, hwe and call rate thresholds
+		if (!indexSnp.getSnpGenotypes().isValid() && !indexSnp.getForceInclude()){
+			LogWriter.getLogger().debug("Skipping index SNP " + indexSnp.getSnpName() + 
+					"- does not pass MAF, HWE or call rate threshold.");
 			return;
 		}
 		
@@ -346,11 +422,18 @@ public class Pruner {
 				throw new PriorityPrunerException("Could not find genotypes for " + 
 					snpInfo.getSnpName());
 			}
-			genotypesList.add(snpInfo.getSnpGenotypes());
+			
+			// if the snp is valid or if this is the index snp, add it to the genotype list
+			if (snpInfo.getSnpGenotypes().isValid() || indexSnp == snpInfo){
+				genotypesList.add(snpInfo.getSnpGenotypes());
+			}
+			
 			if (indexSnp == snpInfo) {
 				// the position of the index SNP in the list
 				referenceSNPIndex = genotypesList.size() - 1;
 			}
+			
+
 		}
 		// if index SNP wasn't found - this shouldn't ever happen
 		if (referenceSNPIndex < 0) {
@@ -358,23 +441,13 @@ public class Pruner {
 					indexSnp.getSnpName());
 		}
 		
+		
 		// calling SnpWorkUnit to do LD calculations
 		SnpWorkUnit snpWorkUnit = new SnpWorkUnit(indexSnp.getSnpName(),
 				genotypesList, referenceSNPIndex,
-				genotypes.getKeptFounders(),
-				options.getMinMaf(), options.getMinHwe(),
-				options.getMinSnpCallRate());
+				genotypes.getKeptFounders());
 
 		snpWorkUnit.performWork();
-
-		// if index SNP didn't pass all filters for MAF, HWE and missing
-		// genotype percentage - skip it, and choose new index SNP
-		if (!snpWorkUnit.getIndexSnpPassed() && !indexSnp.getForceInclude()) {
-			LogWriter.getLogger().debug("Skipping index SNP " + indexSnp.getSnpName() + 
-				" - did not pass all filters for MAF, HWE and missing genotype percentage.");
-			return;
-		}
-
 
 
 		// determine which r^2 threshold to use		
@@ -412,15 +485,21 @@ public class Pruner {
 		int numTagged = 0;
 		for (Result result : snpWorkUnit.getResults()) {
 
-			// prints to LD output file
-			this.ldPrintStream.println(indexSnp.getSnpName()
-					+ "\t"
-					+ result.getPartnerSnpName()
-					+ "\t"
-					+ Math.abs(indexSnp.getPos()
-							- result.getPartnerSnp().getPos()) + "\t"
-							+ result.getRSquared() + "\t" + result.getDPrime());
-
+			if (options.isOutputLDTable()){
+				try{
+					// prints to LD output file
+					ldWriter.write(indexSnp.getSnpName()
+							+ "\t" + indexSnp.getChr() + "\t" + indexSnp.getPos() + "\t" + indexSnp.getAllele1()
+							+ "\t" + indexSnp.getAllele2() + "\t"
+							+ result.getPartnerSnpName()
+							+ "\t"
+							+ result.getPartnerChr() + "\t" + result.getPartnerPos() + "\t" 
+							+ result.getPartnerSnp().getAllele1() + "\t" + result.getPartnerSnp().getAllele2() + "\t"
+									+ result.getRSquared() + "\t" + result.getDPrime() + "\n");
+				}catch(IOException e){
+					throw new PriorityPrunerException("Could not write to LD table: " + e.getMessage());
+				}
+			}
 			if (result.getRSquared() >= r2Threshold) {
 				result.getPartnerSnp().setTagged(true);
 				numTagged++;
