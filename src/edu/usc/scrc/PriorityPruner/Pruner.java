@@ -105,7 +105,7 @@ public class Pruner {
 //				LogWriter.getLogger().info(numFailMaf + " SNPs failed HWE test ( p < " + options.getMinHwe() + " )");
 //			}
 			if (numFailCallRate >0){
-				LogWriter.getLogger().info(numFailMaf + " SNPs failed callrate test ( callrate < " + options.getMinSnpCallRate() + " )");
+				LogWriter.getLogger().info(numFailCallRate + " SNPs failed callrate test ( callrate < " + options.getMinSnpCallRate() + " )");
 			}
 			if (numFail > 0){
 				LogWriter.getLogger().info("After filtering, there are " + (this.genotypes.getSnpGenotypes().size() - numFail) + " SNPs");
