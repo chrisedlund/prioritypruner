@@ -3,10 +3,6 @@
 # Ignore Java class files.
 *.class
 
-# Ignore specific mac OS X files.
-.DS_Store
-/
-
 # Ignore default PriorityPruner log
 PriorityPruner.log
 
