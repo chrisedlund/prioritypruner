@@ -2,8 +2,10 @@
 
 # Ignore Java class files.
 *.class
-SNPfinder/bin
-
 
 # Ignore specific mac OS X files.
 .DS_Store
+/*
+
+# Ignore default PriorityPruner log
+PriorityPruner.log
