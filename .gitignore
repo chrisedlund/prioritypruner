@@ -5,7 +5,10 @@
 
 # Ignore specific mac OS X files.
 .DS_Store
-/*
+/
 
 # Ignore default PriorityPruner log
 PriorityPruner.log
+
+# Ignore Maven target folder
+target
