@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Random;
 
 /**
  * This class handles the parsing of the transposed plink-formats: tped & tfam.
@@ -66,26 +67,30 @@ public class TPlink extends Genotypes {
 	 * @param snpListFile
 	 *            the SNP input file, providing information about which SNPS in
 	 *            the tped file to parse
+	 * @param keepRemoveSamples
+	 *            The PlinkSampleList containing the list samples to keep or remove
+	 *            based on the --keep or --remove options. If null, then no list
+	 *            is defined.
 	 * @throws PriorityPrunerException
 	 *             if files aren't found or if problems are encountered during
 	 *             parsing
 	 */
 	public TPlink(String filePathTPed, String filePathTFam,
-			SnpListFile snpListFile) throws PriorityPrunerException {
-		super();
+			SnpListFile snpListFile, PlinkSampleListFile keepRemoveSamples) throws PriorityPrunerException {
+		super(keepRemoveSamples);
 
 		LogWriter.getLogger().info("Reading pedigree information from [ " + filePathTFam + " ]");
 		
 
-		// initiates tfam parsing
+		// parse the tfam file
 		parseTfam(filePathTFam);
 		
 		// checks if any of the remove, keep or keep_random options has been
 		// chosen
-		if (options.getKeep() != null || options.getRemove() != null
-				|| options.getKeepPercentage() > 0) {
-			parseKeepRemove();
-		}
+//		if (options.getKeep() != null || options.getRemove() != null
+//				|| options.getKeepPercentage() > 0) {
+//			parseKeepRemove();
+//		}
 		
 
 		// sets the keep-flag in Individual-objects according
@@ -104,133 +109,179 @@ public class TPlink extends Genotypes {
 	 * @throws PriorityPrunerException
 	 *             if the associated file isn't found
 	 */
-	private void parseKeepRemove() throws PriorityPrunerException {
-
-		String filePath = "";
-		BufferedReader reader;
-
-		// checks which option that has been entered
-		if (options.getRemove() != null) {
-			filePath = options.getRemove();
-			remove = true;
-		} else if (options.getKeep() != null) {
-			filePath = options.getKeep();
-			keep = true;
-		} else {
-			keep_random = true;
-			return;
-		}
-		// parses the file with the individuals to remove/keep
-		try {
-			reader = new BufferedReader(new FileReader(filePath));
-			int index = 1;
-			while (reader.ready()) {
-				String[] splitString = reader.readLine().split(delim);
-
-				if (splitString.length != 2) {
-					reader.close();
-					throw new PriorityPrunerException(
-							"Invalid number of columns specified in "
-									+ filePath
-									+ " at line "
-									+ (index)
-									+ ". Expected 2 columns but found: "
-									+ splitString.length + ".");
-				}
-				String famID = new String(splitString[0]);
-				String indID = new String(splitString[1]);
-
-				if (famID.equals("") || indID.equals("")) {
-					reader.close();
-					throw new PriorityPrunerException(
-							"Invalid formatting in file \""
-									+ filePath
-									+ "\" at line: "
-									+ (index)
-									+ "\nPlease check that values are separated by single space or tab characters only.");
-				}
-				// stores family ID + individual ID together as a unique key, to
-				// enable easy and accurate retrieval of these individuals
-				keepRemoveHashSet.add(famID + " " + indID);
-				index++;
-			}
-			reader.close();
-		} catch (IOException e) {
-			throw new PriorityPrunerException("Could not open file: "
-					+ e.getMessage());
-		}
-	}
+//	private void parseKeepRemove() throws PriorityPrunerException {
+//
+//		String filePath = "";
+//		BufferedReader reader;
+//
+//		// checks which option that has been entered
+//		if (options.getRemove() != null) {
+//			filePath = options.getRemove();
+//			remove = true;
+//		} else if (options.getKeep() != null) {
+//			filePath = options.getKeep();
+//			keep = true;
+//		} else {
+//			keep_random = true;
+//			return;
+//		}
+//		// parses the file with the individuals to remove/keep
+//		try {
+//			reader = new BufferedReader(new FileReader(filePath));
+//			int index = 1;
+//			while (reader.ready()) {
+//				String[] splitString = reader.readLine().split(delim);
+//
+//				if (splitString.length != 2) {
+//					reader.close();
+//					throw new PriorityPrunerException(
+//							"Invalid number of columns specified in "
+//									+ filePath
+//									+ " at line "
+//									+ (index)
+//									+ ". Expected 2 columns but found: "
+//									+ splitString.length + ".");
+//				}
+//				String famID = new String(splitString[0]);
+//				String indID = new String(splitString[1]);
+//
+//				if (famID.equals("") || indID.equals("")) {
+//					reader.close();
+//					throw new PriorityPrunerException(
+//							"Invalid formatting in file \""
+//									+ filePath
+//									+ "\" at line: "
+//									+ (index)
+//									+ "\nPlease check that values are separated by single space or tab characters only.");
+//				}
+//				// stores family ID + individual ID together as a unique key, to
+//				// enable easy and accurate retrieval of these individuals
+//				keepRemoveHashSet.add(famID + " " + indID);
+//				index++;
+//			}
+//			reader.close();
+//		} catch (IOException e) {
+//			throw new PriorityPrunerException("Could not open file: "
+//					+ e.getMessage());
+//		}
+//	}
 
 	/**
-	 * Sets the keep-flag in Individual-objects according to the keep/remove
-	 * input file. It also stores the gender and index of each individual (in
-	 * variables accessible from Genotypes).
+	 * This is a transposed plink file, so we've already parsed the sample list (TFAM file)
+	 *  before parsing the bulk of the data. For each individual, set its 
+	 * keep flag based on the mutually exclusive --keep, --remove, or --keep_random flags. 
+	 * Set the keptFounders member variable.
 	 */
 	private void setKeepRemove() {
-		int index = 0;
+		//int index = 0;
 		int numKept = 0;
 		int numRemoved = 0;
 		
-		// loops through all individuals to set their keep-flags, and save
-		// gender and index
-		for (Individual individual : individuals) {
-			if (keep) {
-				if (keepRemoveHashSet.contains(individual.getFamilyID() + " "
-						+ individual.getIndividualID())) {
+		
+		if (options.getKeep() != null ){ // the user has defined a --keep file
+			// loop through each individual and set its keep flag to true
+			//  if it exists in the keepRemoveSamples member variable, otherwise set to false
+			for (Individual individual: this.individuals){
+				if (this.keepRemoveSamples.contains(individual.getFamilyID(), individual.getIndividualID())){
 					individual.setKeep(true);
 					numKept++;
-					//subjectSexes.add(individual.getGender());
-					//founderIndices.add(index);
-					index++;
-				} else {
+				}else{
 					individual.setKeep(false);
 				}
-			} else if (remove) {
-				if (keepRemoveHashSet.contains(individual.getFamilyID() + " "
-						+ individual.getIndividualID())) {
+			}
+		}else if (options.getRemove() != null){ // the user has defined a --remove file
+			// loop through each individual and set its keep flag to false
+			//  if it exists in the keepRemoveSamples member variable, otherwise set to true
+			for (Individual individual: this.individuals){
+				if (this.keepRemoveSamples.contains(individual.getFamilyID(), individual.getIndividualID())){
 					individual.setKeep(false);
 					numRemoved++;
-				} else {
+				}else{
 					individual.setKeep(true);
-					//subjectSexes.add(individual.getGender());
-					//founderIndices.add(index);
-					index++;
 				}
-			} else if (keep_random) {
-				individual.setKeep(false);
-				index++;
-			} else {
-				individual.setKeep(true);
-				//subjectSexes.add(individual.getGender());
-				//founderIndices.add(index);
-				index++;
+			}
+		}else if (options.getKeepPercentage() > 0){ // the user has specified the --keep_random option
+			// create a temporary array list with all individuals
+			ArrayList<Individual> tempList = new ArrayList<Individual>(this.individuals.size());
+			for (Individual individual: this.individuals){
+				tempList.add(individual);
+			}
+			
+			// randomly shuffle the temporary list, use a seed if defined by the user
+			Random random;
+			if (options.getSeed() != null){
+				random = new Random(options.getSeed());
+				LogWriter.getLogger().info("Using " + options.getSeed() + " as seed for randomly selecting individuals");
+			}else{
+				random = new Random();
+			}
+			Collections.shuffle(tempList, random);
+				
+			// determine the number of individuals we need to keep 
+			int numKeep = Math.round((float) (options.getKeepPercentage() * this.individuals.size()));
+			
+			// for the first numKeep individuals, set keep to true; for the rest set keep to false
+			numKept = numKeep;
+			for (int i = 0; i < tempList.size(); i++){
+				Individual individual = tempList.get(i);
+				individual.setKeep(i < numKeep);
 			}
 		}
-
-		// chooses random individuals for the option keep_random
-		if (keep_random) {
-			
-			final class RandomInd implements Comparable<RandomInd>{
-				public Individual individual;
-				public Double random;
-				public RandomInd(Individual individual, double random){this.individual = individual; this.random = random;}
-				@Override
-				public int compareTo(RandomInd arg0) {return this.random.compareTo(arg0.random);}
-			}
-			
-			ArrayList<RandomInd> randomIndList = new ArrayList<RandomInd>();
-			for (Individual individual: individuals){
-				randomIndList.add(new RandomInd(individual, new Double(Math.random())));
-			}
-			Collections.sort(randomIndList);
-			
-			int numKeep = Math.round((float) (options.getKeepPercentage() * index));
-
-			for (int i = 0; i < numKeep; i++) {
-				randomIndList.get(i).individual.setKeep(true);
-				numKept++;
-			}
-		}
+		
+//		// loops through all individuals to set their keep-flags, and save
+//		// gender and index
+//		for (Individual individual : individuals) {
+//			if (keep) {
+//				if (keepRemoveHashSet.contains(individual.getFamilyID() + " "
+//						+ individual.getIndividualID())) {
+//					individual.setKeep(true);
+//					numKept++;
+//					index++;
+//				} else {
+//					individual.setKeep(false);
+//				}
+//			} else if (remove) {
+//				if (keepRemoveHashSet.contains(individual.getFamilyID() + " "
+//						+ individual.getIndividualID())) {
+//					individual.setKeep(false);
+//					numRemoved++;
+//				} else {
+//					individual.setKeep(true);
+//					index++;
+//				}
+//			} else if (keep_random) {
+//				individual.setKeep(false);
+//				index++;
+//			} else {
+//				individual.setKeep(true);
+//				index++;
+//			}
+//		}
+//
+//		// chooses random individuals for the option keep_random
+//		if (keep_random) {
+//			
+//			final class RandomInd implements Comparable<RandomInd>{
+//				public Individual individual;
+//				public Double random;
+//				public RandomInd(Individual individual, double random){this.individual = individual; this.random = random;}
+//				@Override
+//				public int compareTo(RandomInd arg0) {return this.random.compareTo(arg0.random);}
+//			}
+//			
+//			ArrayList<RandomInd> randomIndList = new ArrayList<RandomInd>();
+//			for (Individual individual: individuals){
+//				randomIndList.add(new RandomInd(individual, new Double(Math.random())));
+//			}
+//			Collections.sort(randomIndList);
+//			
+//			int numKeep = Math.round((float) (options.getKeepPercentage() * index));
+//
+//			for (int i = 0; i < numKeep; i++) {
+//				randomIndList.get(i).individual.setKeep(true);
+//				numKept++;
+//			}
+//		}
 		
 		for (Individual ind: individuals){
 			if (ind.getKeep()){
@@ -238,11 +289,11 @@ public class TPlink extends Genotypes {
 			}
 		}
 		
-		if (keep){
+		if (options.getKeep() != null){
 			LogWriter.getLogger().info("Reading individuals to keep [ " + options.getKeep() + " ] ... " + numKept + " read");
-		}else if (remove){
+		}else if (options.getRemove() != null){
 			LogWriter.getLogger().info("Reading individuals to remove [ " + options.getRemove() + " ] ... " + numRemoved + " read");
-		}else if (keep_random){
+		}else if (options.getKeepPercentage() > 0){
 			LogWriter.getLogger().info("Selecting " + numKept + " random individuals to keep");
 		}
 	}
