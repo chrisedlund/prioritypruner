@@ -23,16 +23,12 @@ THE SOFTWARE.
 
 package edu.usc.scrc.PriorityPruner;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+
 
 /**
  * This class is responsible for pruning and prioritizing the SNPs defined in
@@ -44,39 +40,55 @@ import java.util.Comparator;
 public class Pruner {
 
 	private SnpListFile snpListFile;
+	private LinkageDisequilibriumFile ldFile;
 	private Genotypes genotypes;
 	private int pickOrder = 1;
 	private CommandLineOptions options = CommandLineOptions.getInstance();
-	private BufferedWriter ldWriter = null;
+	//private BufferedWriter ldWriter = null;
 
 	/**
 	 * Constructor for Pruner. Initiates parsing of genotype and family data by
 	 * creating SnpListFile- and TPlink-objects. It creates an output file for
 	 * the LD results calculated by SnpWorkUnit and initiates the pruning.
 	 * 
+	 * @param snpListFile
+	 *            The SnpListFile containing the SNPs to prune
+	 * @param ldFile
+	 *            The LinkageDisequilibriumFile to write to (if not null)
+	 *            
 	 * @throws PriorityPrunerException
 	 *             if problems are encountered during parsing or pruning
 	 */
-	public Pruner() throws PriorityPrunerException {
-		// initiates parsing of the SNP input file
-		this.snpListFile = new SnpListFile(options.getSnpTablePath(),
-				options.getNumMetrics());
-		// initiates parsing of tped and tfam files
-		this.genotypes = new TPlink(options.getTped(), options.getTfam(),
-				this.snpListFile);
+	public Pruner(Genotypes genotypes, SnpListFile snpListFile, 
+			LinkageDisequilibriumFile ldFile) throws PriorityPrunerException {
+		
+		this.snpListFile = snpListFile;
+		this.ldFile = ldFile;
+		
+		// parse the list of samples defined by the --keep or --remove options if specified
+//		PlinkSampleListFile keepRemoveSamples = null;
+//		if (options.getKeep() != null){
+//			keepRemoveSamples = new PlinkSampleListFile(options.getKeep());
+//		}else if (options.getRemove() != null){
+//			keepRemoveSamples = new PlinkSampleListFile(options.getRemove());
+//		}
+		
+		this.genotypes = genotypes;
+//		this.genotypes = new TPlink(options.getTped(), options.getTfam(),
+//				this.snpListFile, keepRemoveSamples);
 		
 		try{
-			checkSnpsAreInGenotypeFile();
+			//checkSnpsAreInGenotypeFile();
 			
 			//LogWriter.getLogger().info("Calculating SNP statistics");
 			// calculate maf, call rate, hwe for all snps
 			// already been done for current SNP - calculate this!
 			int numFailMaf = 0;
-			int numFailHwe = 0;
+			//int numFailHwe = 0;
 			int numFailCallRate = 0;
 			int numFail = 0;
 			for (SnpGenotypes g : this.genotypes.getSnpGenotypes()) {
-					//getMafHweMissingPercent(genotype, founderIndices,subjectSexes);
+				//getMafHweMissingPercent(genotype, founderIndices,subjectSexes);
 				g.calculateMafHweMissingPercentCompressed(genotypes.getKeptFounders());
 				boolean fail = false;
 				if (g.getMaf() < options.getMinMaf()){
@@ -112,71 +124,72 @@ public class Pruner {
 			}
 			
 			
-			if (options.isOutputLDTable()){
-				createLdFile();
-			}
+//			if (options.isOutputLDTable()){
+//				createLdFile();
+//			}
 			startPruning();
 		}catch (PriorityPrunerException e){
 			throw e;
-		}finally{
-			if (ldWriter != null){
-				try{
-					ldWriter.close();
-				}catch(IOException e){e.printStackTrace();}
-			}
 		}
+//		finally{
+//			if (ldWriter != null){
+//				try{
+//					ldWriter.close();
+//				}catch(IOException e){e.printStackTrace();}
+//			}
+//		}
 	}
 
-	/**
-	 * Creates LD file to store information calculated in SnpWorkUnit. The file
-	 * will be placed in file path specified by the user. It will overwrite
-	 * already existing file with same name.
-	 * 
-	 * @throws PriorityPrunerException
-	 *             if new file couldn't be created
-	 */
-	private void createLdFile() throws PriorityPrunerException {
-
-
-		
-		try {
-			// creates output file
-			LogWriter.getLogger().info("Writing LD metrics to [ " + options.getOutputPrefix() + ".ld" + " ]");
-			File outputFile = new File(options.getOutputPrefix() + ".ld");
-			ldWriter = new BufferedWriter(new FileWriter(outputFile));
-			
-			ldWriter.write("index_snp_name" + "\t" + "index_snp_chr" + "\t" + "index_snp_pos" + "\t"
-			+ "index_snp_a1" + "\t" + "index_snp_a2" + "\t" + "partner_snp_name" + "\t" + 
-					"partner_snp_chr" + "\t" + "partner_snp_pos" + "\t" + "partner_snp_a1" + "\t"
-			+ "partner_snp_a2" + "\t" + "r^2" + "\t" + "D'" + "\n");
-			
-		} catch (IOException e) {
-			throw new PriorityPrunerException("Could not create file: "
-					+ e.getMessage());
-		}
-		
-	}
+//	/**
+//	 * Creates LD file to store information calculated in SnpWorkUnit. The file
+//	 * will be placed in file path specified by the user. It will overwrite
+//	 * already existing file with same name.
+//	 * 
+//	 * @throws PriorityPrunerException
+//	 *             if new file couldn't be created
+//	 */
+//	private void createLdFile() throws PriorityPrunerException {
+//
+//
+//		
+//		try {
+//			// creates output file
+//			LogWriter.getLogger().info("Writing LD metrics to [ " + options.getOutputPrefix() + ".ld" + " ]");
+//			File outputFile = new File(options.getOutputPrefix() + ".ld");
+//			ldWriter = new BufferedWriter(new FileWriter(outputFile));
+//			
+//			ldWriter.write("index_snp_name" + "\t" + "index_snp_chr" + "\t" + "index_snp_pos" + "\t"
+//			+ "index_snp_a1" + "\t" + "index_snp_a2" + "\t" + "partner_snp_name" + "\t" + 
+//					"partner_snp_chr" + "\t" + "partner_snp_pos" + "\t" + "partner_snp_a1" + "\t"
+//			+ "partner_snp_a2" + "\t" + "r^2" + "\t" + "D'" + "\n");
+//			
+//		} catch (IOException e) {
+//			throw new PriorityPrunerException("Could not create file: "
+//					+ e.getMessage());
+//		}
+//		
+//	}
 	
 	
-	/**
-	 * Checks that all SNPs defined in the SNP Input Table have corresponding data in the
-	 * genotype dataset.
-	 * 
-	 * @throws PriorityPrunerException
-	 *             if SNP not found in the genotype dataset
-	 */
-	private void checkSnpsAreInGenotypeFile() throws PriorityPrunerException{
-		// checks that corresponding SNP is provided in tped file
-		for (SnpInfo snp : snpListFile.getSnps()) {
-			if (!snp.getInTped()) {
-				throw new PriorityPrunerException(snp.getSnpName()
-						+ " at chromsome " + snp.getChr()
-						+ ":" + snp.getPos()
-						+ " with alleles: " + snp.getAllele1() + " "
-						+ snp.getAllele2() + ", not found in genotype dataset.");
-			}
-		}
-	}
+//	/**
+//	 * Checks that all SNPs defined in the SNP Input Table have corresponding data in the
+//	 * genotype dataset.
+//	 * 
+//	 * @throws PriorityPrunerException
+//	 *             if SNP not found in the genotype dataset
+//	 */
+//	private void checkSnpsAreInGenotypeFile() throws PriorityPrunerException{
+//		// checks that corresponding SNP is provided in tped file
+//		for (SnpInfo snp : snpListFile.getSnps()) {
+//			if (!snp.getInTped()) {
+//				throw new PriorityPrunerException(snp.getSnpName()
+//						+ " at chromsome " + snp.getChr()
+//						+ ":" + snp.getPos()
+//						+ " with alleles: " + snp.getAllele1() + " "
+//						+ snp.getAllele2() + ", not found in genotype dataset.");
+//			}
+//		}
+//	}
 
 	/**
 	 * Initiates pruning of SNPs defined in the SNP input file. Loops through
@@ -221,73 +234,73 @@ public class Pruner {
 				"--------------------------------------------------");
 
 		// creates the pruning results file
-		createResultsFile();
+		//createResultsFile();
 	}
 
-	/**
-	 * Creates output file for pruning results. The file will be placed in file
-	 * path specified by the user. It will overwrite already existing file with
-	 * same name.
-	 * 
-	 * @throws PriorityPrunerException
-	 *             if new file couldn't be created
-	 */
-	private void createResultsFile() throws PriorityPrunerException {
-
-		BufferedWriter writer = null;
-		
-		try {
-			// creates output file
-			//DecimalFormat df = new DecimalFormat("0.00##");
-			
-			File outputFile = new File(options.getOutputPrefix() + ".results");
-			writer = new BufferedWriter(new FileWriter(outputFile));
-			
-			LogWriter.getLogger().info("Writing pruning results to [ " + options.getOutputPrefix() + ".results" + " ]");
-			// writes to log and output files
-			
-			writer.write("name" + "\t" + "chr" + "\t" + "pos" + "\t" + "a1" + "\t" + "a2" + "\t" 
-						+ "tagged" + "\t" + "selected" + "\t" + "best_tag" + "\t" + "r^2" + "\n" );
-			for (SnpInfo snp : snpListFile.getSnps()) {
-						
-				String bestTag = "NA";
-				String r2 = "NA";
-				if (snp.getTaggedByList().size() > 0){
-					Double bestR2 = new Double(-1);
-					for (SnpR2Pair tag: snp.getTaggedByList()){
-						if (tag.getrSquared() > bestR2){
-							bestR2 = tag.getrSquared();
-							bestTag = tag.getSnp().getSnpName();
-						}
-					}
-					r2 = bestR2.toString();
-					//primaryTag = snp.getTaggedByList().
-				}
-				
-				if (snp.getSnpGenotypes().isValid() || snp.getForceInclude()){
-					writer.write(snp.getSnpName() + "\t"
-							+ snp.getChr() + "\t" 
-							+ snp.getPos() + "\t"
-							+ snp.getAllele1() + "\t" 
-							+ snp.getAllele2() + "\t"
-							+ (snp.getTagged() ? "1" : "0") + "\t" 
-							+ (snp.getPicked() ? "1" : "0") + "\t"
-							+ bestTag + "\t" 
-							+ r2 + "\n");
-				}
-			}
-		} catch (IOException e) {
-			throw new PriorityPrunerException("Could not create file: "
-					+ e.getMessage()
-					+ "\nPlease check that correct file path is provided.");
-		}finally{
-			if (writer != null){
-				try{
-					writer.close();
-				}catch(IOException e){e.printStackTrace();}
-			}
-		}
-	}
+//	/**
+//	 * Creates output file for pruning results. The file will be placed in file
+//	 * path specified by the user. It will overwrite already existing file with
+//	 * same name.
+//	 * 
+//	 * @throws PriorityPrunerException
+//	 *             if new file couldn't be created
+//	 */
+//	private void createResultsFile() throws PriorityPrunerException {
+//
+//		BufferedWriter writer = null;
+//		
+//		try {
+//			// creates output file
+//			//DecimalFormat df = new DecimalFormat("0.00##");
+//			
+//			File outputFile = new File(options.getOutputPrefix() + ".results");
+//			writer = new BufferedWriter(new FileWriter(outputFile));
+//			
+//			LogWriter.getLogger().info("Writing pruning results to [ " + options.getOutputPrefix() + ".results" + " ]");
+//			// writes to log and output files
+//			
+//			writer.write("name" + "\t" + "chr" + "\t" + "pos" + "\t" + "a1" + "\t" + "a2" + "\t" 
+//						+ "tagged" + "\t" + "selected" + "\t" + "best_tag" + "\t" + "r^2" + "\n" );
+//			for (SnpInfo snp : snpListFile.getSnps()) {
+//						
+//				String bestTag = "NA";
+//				String r2 = "NA";
+//				if (snp.getTaggedByList().size() > 0){
+//					Double bestR2 = new Double(-1);
+//					for (SnpR2Pair tag: snp.getTaggedByList()){
+//						if (tag.getrSquared() > bestR2){
+//							bestR2 = tag.getrSquared();
+//							bestTag = tag.getSnp().getSnpName();
+//						}
+//					}
+//					r2 = bestR2.toString();
+//					//primaryTag = snp.getTaggedByList().
+//				}
+//				
+//				if (snp.getSnpGenotypes().isValid() || snp.getForceInclude()){
+//					writer.write(snp.getSnpName() + "\t"
+//							+ snp.getChr() + "\t" 
+//							+ snp.getPos() + "\t"
+//							+ snp.getAllele1() + "\t" 
+//							+ snp.getAllele2() + "\t"
+//							+ (snp.getTagged() ? "1" : "0") + "\t" 
+//							+ (snp.getPicked() ? "1" : "0") + "\t"
+//							+ bestTag + "\t" 
+//							+ r2 + "\n");
+//				}
+//			}
+//		} catch (IOException e) {
+//			throw new PriorityPrunerException("Could not create file: "
+//					+ e.getMessage()
+//					+ "\nPlease check that correct file path is provided.");
+//		}finally{
+//			if (writer != null){
+//				try{
+//					writer.close();
+//				}catch(IOException e){e.printStackTrace();}
+//			}
+//		}
+//	}
 
 	/**
 	 * Calculates scaled scores for potential surrogates, based on their minimum
@@ -485,17 +498,13 @@ public class Pruner {
 		int numTagged = 0;
 		for (Result result : snpWorkUnit.getResults()) {
 
-			if (options.isOutputLDTable()){
+			if (this.ldFile != null){
 				try{
 					// prints to LD output file
-					ldWriter.write(indexSnp.getSnpName()
-							+ "\t" + indexSnp.getChr() + "\t" + indexSnp.getPos() + "\t" + indexSnp.getAllele1()
-							+ "\t" + indexSnp.getAllele2() + "\t"
-							+ result.getPartnerSnpName()
-							+ "\t"
-							+ result.getPartnerChr() + "\t" + result.getPartnerPos() + "\t" 
-							+ result.getPartnerSnp().getAllele1() + "\t" + result.getPartnerSnp().getAllele2() + "\t"
-									+ result.getRSquared() + "\t" + result.getDPrime() + "\n");
+					this.ldFile.writeLdRow(indexSnp.getSnpName(),indexSnp.getChr(),indexSnp.getPos(),
+							indexSnp.getAllele1(),indexSnp.getAllele2(),result.getPartnerSnpName(), 
+							result.getPartnerChr(),result.getPartnerPos(),result.getPartnerSnp().getAllele1(),
+							result.getPartnerSnp().getAllele2(),result.getRSquared(),result.getDPrime());
 				}catch(IOException e){
 					throw new PriorityPrunerException("Could not write to LD table: " + e.getMessage());
 				}
@@ -593,6 +602,11 @@ public class Pruner {
 
 	}
 	
+	/***
+	 * Class to sort Result objects by force include status, then 
+	 * pairwise r-squared, then SNP name (to prevent randomness) 
+	 *
+	 */
 	private class RSquaredSorter implements Comparator<Result> {
 		@Override
 		public int compare(Result x, Result y) {
