@@ -81,6 +81,8 @@ public class CommandLineOptions {
 	private String remove = null;
 	private String keep = null;
 	private double keepPercentage = -1;
+	private Long seed = null;
+	
 	// flag indicating if surrogates should be added for force included SNPs
 	// this value goes together with option "nos", [no s(urrogates)]
 	private boolean addSurrogatesForForceIncludedSnps = true;
@@ -378,6 +380,12 @@ public class CommandLineOptions {
 				"Specify that surrogates should not be added for force included SNPs",
 				false, "no_surrogates_for_force_included_snps");
 		
+		Option seed = createOptionOneName(1, 
+				"long", 
+				"Integer seed for random number generator. If not specified, a random seed is used instead.", 
+				false, 
+				"seed");
+				
 		//help
 		Option help = createOptionTwoNames(0, "none", "help", "Print help",
 				false, "h");
@@ -422,6 +430,7 @@ public class CommandLineOptions {
 		options.addOption(noSurrogatesForForceIncluded);
 		options.addOption(r2Threshold);
 		options.addOption(fixedR2);
+		options.addOption(seed);
 		options.addOption(help);
 		options.addOptionGroup(keepRemoveGroup);
 		options.addOptionGroup(r2Group);
@@ -755,6 +764,12 @@ public class CommandLineOptions {
 			// parse no_surrogates_for_force_included_snps
 			if (commandLine.hasOption("no_surrogates_for_force_included_snps")) {
 				this.setAddSurrogatesForForceIncludedSnps(false);
+			}
+			
+			// parse seed
+			if (commandLine.hasOption("seed")){
+				String value = commandLine.getOptionValue("seed");
+				this.seed = new Long(this.getLongArgument("seed", value, Long.MIN_VALUE, Long.MAX_VALUE));
 			}
 
 			// check that we have all required arguments
@@ -1266,5 +1281,9 @@ public class CommandLineOptions {
 
 	public void setAddSurrogatesForForceIncludedSnps(boolean value) {
 		this.addSurrogatesForForceIncludedSnps = value;
+	}
+	
+	public Long getSeed(){
+		return this.seed;
 	}
 }
