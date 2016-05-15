@@ -41,7 +41,7 @@ public class Individual {
 	//private String gender;
 	private Individual mom;
 	private Individual dad;
-	private boolean keep;
+	private boolean keep = true;
 	private Sex sex;
 
 	/**
