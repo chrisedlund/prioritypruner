@@ -53,7 +53,7 @@ public class SnpInfo implements Comparable<SnpInfo> {
 	private ArrayList<SnpR2Pair> taggedByList = new ArrayList<SnpR2Pair>();
 	// metric weights defined for this SNP in SNP input file
 	private double[] metrics;
-	private CommandLineOptions options = CommandLineOptions.getInstance();
+	//private CommandLineOptions options = CommandLineOptions.getInstance();
 
 	/**
 	 * Constructor for SnpInfo. Makes quick checks to determine if this SNP has
@@ -230,8 +230,8 @@ public class SnpInfo implements Comparable<SnpInfo> {
 		this.sortedByPosIndex = sortedByPosIndex;
 	}
 
-	public boolean getPassDesignScore() {
-		if (this.designScore >= options.getMinDesignScore()) {
+	public boolean getPassDesignScore() throws PriorityPrunerException {
+		if (this.designScore >= CommandLineOptions.getInstance().getMinDesignScore()) {
 			return true;
 		}
 		return false;
