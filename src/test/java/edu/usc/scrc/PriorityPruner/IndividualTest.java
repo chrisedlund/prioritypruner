@@ -57,7 +57,7 @@ public class IndividualTest {
 		assertEquals(ind.getSex(),Individual.Sex.MALE);
 				
 		// test keep is initialize to true
-		assertEquals(ind.getKeep(),false);
+		assertEquals(ind.getKeep(),true);
 	}
 
 }
