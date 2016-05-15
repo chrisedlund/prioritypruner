@@ -40,6 +40,12 @@ import org.apache.log4j.PatternLayout;
  */
 public class PriorityPruner {
 	public static void main(String[] args) {
+		
+		// LD output file
+		LinkageDisequilibriumFile ldFile = null;
+		int returnCode = 0;
+		FileAppender logFileAppender = null;
+		
 		try {
 			CommandLineOptions options = null;
 			try {
@@ -52,31 +58,29 @@ public class PriorityPruner {
 				// hasen't been parsed if an exception is caught.
 			} catch (PriorityPrunerException e) {
 				// defines logging properties
-				PatternLayout layout = new PatternLayout(
-						"org.apache.log4j.PatternLayout");
+				PatternLayout layout = new PatternLayout("org.apache.log4j.PatternLayout");
 				layout.setConversionPattern("%m%n");
-				FileAppender logFileAppender = new FileAppender(layout,
-						"PriorityPruner.log", false);
-				Logger.getRootLogger().addAppender(logFileAppender);
+				FileAppender defaultLogFileAppender = new FileAppender(layout,"PriorityPruner.log", false);
+				Logger.getRootLogger().addAppender(defaultLogFileAppender);
 				// TODO: update download info
-				LogWriter
-						.getLogger()
-						.info("Welcome to PriorityPruner version 0.1.2 \n\nFor latest version please visit: http://prioritypruner.sourceforge.net\n(C) 2016 Christopher K. Edlund et al., The MIT License (MIT)\n-------------------------------------------------------------------------------\n");
-				LogWriter.getLogger().warn("ERROR: " + e.getMessage());				
-				System.exit(0);
+				LogWriter.getLogger()
+						.info("Welcome to PriorityPruner version 0.1.3 \n\nFor latest version please visit: http://prioritypruner.sourceforge.net\n(C) 2016 Christopher K. Edlund et al., The MIT License (MIT)\n-------------------------------------------------------------------------------\n");
+				LogWriter.getLogger().warn("ERROR: " + e.getMessage());	
+				defaultLogFileAppender.close();
+				System.exit(1);
 			}
 
 			// defines logging properties
 			PatternLayout layout = new PatternLayout(
 					"org.apache.log4j.PatternLayout");
 			layout.setConversionPattern("%m%n");
-			FileAppender logFileAppender = new FileAppender(layout,
+			logFileAppender = new FileAppender(layout,
 					options.getOutputPrefix() + ".log", false);
 			Logger.getRootLogger().addAppender(logFileAppender);
 			// TODO: update download info
 			LogWriter
 					.getLogger()
-					.info("Welcome to PriorityPruner version 0.1.2 \n\nFor latest version please visit: http://prioritypruner.sourceforge.net\n(C) 2016 Christopher K. Edlund et al., The MIT License (MIT)\n-------------------------------------------------------------------------------\n");
+					.info("Welcome to PriorityPruner version 0.1.3 \n\nFor latest version please visit: http://prioritypruner.sourceforge.net\n(C) 2016 Christopher K. Edlund et al., The MIT License (MIT)\n-------------------------------------------------------------------------------\n");
 			
 			long start = System.currentTimeMillis();
 			if (options.getOutputPrefix()!= null){
@@ -103,10 +107,37 @@ public class PriorityPruner {
 			// Genotypes.getSnpGenotypes()!=null) could be used instead.
 			if (options.getTped() != null && options.getTfam() != null
 					&& options.getSnpTablePath() != null) {
-				// initiates pruning
-				new Pruner();
-				LogWriter.getLogger()
-						.info("\nAnalysis finished: " + new Date());
+				
+				// parse the list of SNPs to prune; all pruning results are 
+				// stored in this object
+				SnpListFile snpListFile = new SnpListFile(options.getSnpTablePath(), options.getNumMetrics());
+				
+				// create an LD file if specified by user
+				if (options.isOutputLDTable()){
+					ldFile = new LinkageDisequilibriumFile();
+				}
+				
+				// parse keep/remove samples list in case --keep or --remove is specified by user
+				PlinkSampleListFile keepRemoveSamples = null;
+				if (options.getKeep() != null){
+					keepRemoveSamples = new PlinkSampleListFile(options.getKeep());
+				}else if (options.getRemove() != null){
+					keepRemoveSamples = new PlinkSampleListFile(options.getRemove());
+				}
+				
+				// parse genotypes (at this time only Transposed PLINK is supported)
+				Genotypes genotypes = new TPlink(options.getTped(), options.getTfam(), snpListFile, keepRemoveSamples);
+				
+				// verify all SNPs from snpListFile are in genotypes
+				checkSnpsAreInGenotypeFile(snpListFile);
+						
+				// prune the list of SNPs
+				Pruner pruner = new Pruner(genotypes, snpListFile, ldFile);
+				
+				// write the results file
+				new ResultsFile(snpListFile);
+				
+				LogWriter.getLogger().info("\nAnalysis finished: " + new Date());
 				long end = System.currentTimeMillis();
 				// prints duration time
 				printDuration(end - start);
@@ -118,14 +149,29 @@ public class PriorityPruner {
 			// execution of this program and exits it
 		} catch (PriorityPrunerException e) {
 			LogWriter.getLogger().warn("\r\nERROR: " + e.getMessage());
-			System.exit(0);
+			returnCode = 1;
 		} catch (IOException e) {
 			LogWriter
 					.getLogger()
 					.warn("Could not create file: "
 							+ e.getMessage()
 							+ "\nPlease check that correct file path is provided.");
-			System.exit(0);
+			returnCode = 1;
+		} finally{
+			// close all open files
+			if (ldFile != null){
+				try{
+					ldFile.close();
+				}catch(Exception e){
+					returnCode = 1;
+					e.printStackTrace();
+				}
+			}
+			if (logFileAppender != null){
+				logFileAppender.close();
+			}
+			//exit
+			System.exit(returnCode);
 		}
 	}
 
@@ -189,4 +235,26 @@ public class PriorityPruner {
 					"Duration: " + millis + " millisecond(s) ");
 		}
 	}
+	
+	/**
+	 * Checks that all SNPs defined in the SNP Input Table have corresponding data in the
+	 * genotype dataset.
+	 * 
+	 * @throws PriorityPrunerException
+	 *             if SNP not found in the genotype dataset
+	 */
+	private static void checkSnpsAreInGenotypeFile(SnpListFile snpListFile) throws PriorityPrunerException{
+		// checks that corresponding SNP is provided in genotypes file
+		for (SnpInfo snp : snpListFile.getSnps()) {
+			if (!snp.getInTped()) {
+				throw new PriorityPrunerException(snp.getSnpName()
+						+ " at chromsome " + snp.getChr()
+						+ ":" + snp.getPos()
+						+ " with alleles: " + snp.getAllele1() + " "
+						+ snp.getAllele2() + ", not found in genotype dataset.");
+			}
+		}
+	}
+
+	
 }
