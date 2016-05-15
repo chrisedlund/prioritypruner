@@ -31,6 +31,15 @@ import java.util.ArrayList;
  * stores all parsed information about SNPs and individuals.
  */
 public class Genotypes {
+	
+	protected PlinkSampleListFile keepRemoveSamples = null;
+
+	
+	public Genotypes(PlinkSampleListFile keepRemoveSamples) throws PriorityPrunerException{
+		this.keepRemoveSamples = keepRemoveSamples;
+		
+	}
+	
 	// SNPs stored as SnpGenotypes-object
 	protected ArrayList<SnpGenotypes> snpGenotypes = new ArrayList<SnpGenotypes>();
 	// gender of chosen individuals
