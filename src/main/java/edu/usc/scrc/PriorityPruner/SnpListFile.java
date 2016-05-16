@@ -63,7 +63,7 @@ public class SnpListFile {
 	//private BufferedReader reader;
 	
 	// allows access to options entered in the command line
-	private CommandLineOptions options = CommandLineOptions.getInstance();
+	private CommandLineOptions options = null;
 	
 	// stores information from SNP input file about which SNPs that should be
 	// force included
@@ -84,10 +84,11 @@ public class SnpListFile {
 	 * @throws PriorityPrunerException
 	 *             if problem are encountered during parsing
 	 */
-	public SnpListFile(String filePath, int numMetrics)
+	public SnpListFile(String filePath, int numMetrics, CommandLineOptions options)
 			throws PriorityPrunerException {
 		this.filePath = filePath;
 		this.numMetrics = numMetrics;
+		this.options = options;
 		parseFile();
 //		if (options.getForceIncludeFilePath() != null) {
 //			parseForceInclude();
@@ -171,14 +172,14 @@ public class SnpListFile {
 			// input file, to metricNames.
 			// If gone through whole header in SNP input file without finding
 			// current metric, an exception will get thrown
-			for (int j = 0; j < options.getMetrics().size(); j++) {
-				String metric = options.getMetrics().get(j).getName();
+			for (int j = 0; j < this.options.getMetrics().size(); j++) {
+				String metric =  this.options.getMetrics().get(j).getName();
 				if (columnNamesToIndexHash.containsKey(metric)){
 					int index = columnNamesToIndexHash.get(metric);
 					metricNames.add(new MetricNamePos(metric, index));
 				}else{
 					throw new PriorityPrunerException(
-						"The metric column '" + options.getMetrics().get(j).getName() +
+						"The metric column '" +  this.options.getMetrics().get(j).getName() +
 					"' does not exist in the SNP Input Table. Note that column names are case-sensitive.");
 				}
 			}
@@ -235,8 +236,8 @@ public class SnpListFile {
 				}
 				
 				// skip the line if this isn't the chromosome we're filtering on
-				if (CommandLineOptions.getInstance().getChr() != null &&
-						!CommandLineOptions.getInstance().getChr().equals(chr)){
+				if (this.options.getChr() != null &&
+						!this.options.getChr().equals(chr)){
 					continue;
 				}
 				
@@ -364,12 +365,11 @@ public class SnpListFile {
 				snps.add(snp);
 
 			}
-			if (CommandLineOptions.getInstance().getChr() != null
-					&& !chromsomeHash.contains(CommandLineOptions.getInstance()
-							.getChr().toUpperCase())) {
+			if (this.options.getChr() != null
+					&& !chromsomeHash.contains(this.options.getChr().toUpperCase())) {
 				throw new PriorityPrunerException(
 						"The SNP Input Table does not contain any SNPs at chromosome "
-								+ CommandLineOptions.getInstance().getChr()
+								+ this.options.getChr()
 								+ " No SNPs to analyze.");
 			}
 		} catch (FileNotFoundException e) {

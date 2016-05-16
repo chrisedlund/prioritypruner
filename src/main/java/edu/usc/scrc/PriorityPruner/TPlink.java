@@ -52,7 +52,7 @@ public class TPlink extends Genotypes {
 	private boolean remove;
 	private boolean keep;
 	private boolean keep_random;
-	private CommandLineOptions options = CommandLineOptions.getInstance();
+	
 
 	// splitting regex for input files that allows single tabs or spaces
 	private String delim = "[\\s|\\t]";
@@ -76,8 +76,8 @@ public class TPlink extends Genotypes {
 	 *             parsing
 	 */
 	public TPlink(String filePathTPed, String filePathTFam,
-			SnpListFile snpListFile, PlinkSampleListFile keepRemoveSamples) throws PriorityPrunerException {
-		super(keepRemoveSamples);
+			SnpListFile snpListFile, PlinkSampleListFile keepRemoveSamples, CommandLineOptions options) throws PriorityPrunerException {
+		super(keepRemoveSamples, options);
 
 		LogWriter.getLogger().info("Reading pedigree information from [ " + filePathTFam + " ]");
 		
@@ -321,8 +321,8 @@ public class TPlink extends Genotypes {
 
 			LogWriter.getLogger().info("Reading genotypes from [ " + filePath + " ]");
 			
-			if (CommandLineOptions.getInstance().getChr() != null){
-				LogWriter.getLogger().info("Extracting SNPs from chromosome " + CommandLineOptions.getInstance().getChr());
+			if (this.options.getChr() != null){
+				LogWriter.getLogger().info("Extracting SNPs from chromosome " + this.options.getChr());
 			}
 			while (reader.ready()) {
 				String[] splitString = reader.readLine().split(delim);
@@ -357,9 +357,9 @@ public class TPlink extends Genotypes {
 				// case matches the chromosome on the line in the tped where
 				// we are. If it does - continue parsing this line, else - go to
 				// next line
-				if (CommandLineOptions.getInstance().getChr() == null
+				if (this.options.getChr() == null
 						|| chr.toUpperCase().equals(
-								CommandLineOptions.getInstance().getChr()
+								this.options.getChr()
 										.toUpperCase())) {
 					
 					String snpName = new String(splitString[1]);

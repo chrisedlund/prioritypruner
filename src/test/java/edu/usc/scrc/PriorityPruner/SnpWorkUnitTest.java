@@ -67,6 +67,9 @@ public class SnpWorkUnitTest {
 	@Test
 	public void testDiploidLdCalculations() throws PriorityPrunerException, IOException {
 		
+		// set up default options
+		CommandLineOptions options = new CommandLineOptions();
+		
 		// get test resource file paths
 		ClassLoader classLoader = getClass().getClassLoader();
 		String filePathTPedDiploid = classLoader.getResource("pp_1kgp3_yri_chr12_test.tped").getPath();
@@ -75,10 +78,10 @@ public class SnpWorkUnitTest {
 		String haploviewLdFilePathDiploid = classLoader.getResource("pp_1kgp3_yri_chr12.haploview.ld").getPath();
 		
 		// create a new SnpListFile (only polymorphic SNPs)
-		SnpListFile snpListFileDiploid = new SnpListFile(snpListFilePathDiploid, 0);
+		SnpListFile snpListFileDiploid = new SnpListFile(snpListFilePathDiploid, 0, options);
 		
 		// create a new Genotypes file by parsing transposed PLINK data
-		Genotypes genotypesDiploid = new TPlink(filePathTPedDiploid, filePathTFamDiploid, snpListFileDiploid, null);
+		Genotypes genotypesDiploid = new TPlink(filePathTPedDiploid, filePathTFamDiploid, snpListFileDiploid, null, options);
 		
 		// we need to first calculate MAF and missingness so that each SNP gets it's alleles assigned
 		for (SnpGenotypes g : genotypesDiploid.getSnpGenotypes()) {
@@ -104,6 +107,9 @@ public class SnpWorkUnitTest {
 	@Test
 	public void testHaploidLdCalculations() throws PriorityPrunerException, IOException{
 		
+		// set up default options
+		CommandLineOptions options = new CommandLineOptions();
+		
 		// get test resource file paths
 		ClassLoader classLoader = getClass().getClassLoader();
 		String filePathTPedHaploid = classLoader.getResource("pp_1kgp3_yri_chrX_test.tped").getPath();
@@ -112,10 +118,10 @@ public class SnpWorkUnitTest {
 		String haploviewLdFilePathHaploid = classLoader.getResource("pp_1kgp3_yri_chrX.haploview.ld").getPath();		
 		
 		// create a new SnpListFile (only polymorphic SNPs)
-		SnpListFile snpListFileHaploid = new SnpListFile(snpListFilePathHaploid, 0);
+		SnpListFile snpListFileHaploid = new SnpListFile(snpListFilePathHaploid, 0, options);
 		
 		// create a new Genotypes file by parsing transposed PLINK data
-		Genotypes genotypesHaploid = new TPlink(filePathTPedHaploid, filePathTFamHaploid, snpListFileHaploid, null);
+		Genotypes genotypesHaploid = new TPlink(filePathTPedHaploid, filePathTFamHaploid, snpListFileHaploid, null, options);
 		
 		// we need to first calculate MAF and missingness so that each SNP gets it's alleles assigned
 		for (SnpGenotypes g : genotypesHaploid.getSnpGenotypes()) {

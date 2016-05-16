@@ -33,10 +33,11 @@ import java.util.ArrayList;
 public class Genotypes {
 	
 	protected PlinkSampleListFile keepRemoveSamples = null;
-
+	protected CommandLineOptions options = null;
 	
-	public Genotypes(PlinkSampleListFile keepRemoveSamples) throws PriorityPrunerException{
+	public Genotypes(PlinkSampleListFile keepRemoveSamples, CommandLineOptions options) throws PriorityPrunerException{
 		this.keepRemoveSamples = keepRemoveSamples;
+		this.options = options;
 		
 	}
 	

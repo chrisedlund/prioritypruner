@@ -50,7 +50,7 @@ public class PriorityPruner {
 			CommandLineOptions options = null;
 			try {
 				// parses the command line options
-				options = CommandLineOptions.getInstance(args);
+				options = new CommandLineOptions(args);
 
 				// in case a problem is encountered during parsing, a default
 				// log file is created with this information. This is because
@@ -110,11 +110,11 @@ public class PriorityPruner {
 				
 				// parse the list of SNPs to prune; all pruning results are 
 				// stored in this object
-				SnpListFile snpListFile = new SnpListFile(options.getSnpTablePath(), options.getNumMetrics());
+				SnpListFile snpListFile = new SnpListFile(options.getSnpTablePath(), options.getNumMetrics(), options);
 				
 				// create an LD file if specified by user
 				if (options.isOutputLDTable()){
-					ldFile = new LinkageDisequilibriumFile();
+					ldFile = new LinkageDisequilibriumFile(options);
 				}
 				
 				// parse keep/remove samples list in case --keep or --remove is specified by user
@@ -126,16 +126,16 @@ public class PriorityPruner {
 				}
 				
 				// parse genotypes (at this time only Transposed PLINK is supported)
-				Genotypes genotypes = new TPlink(options.getTped(), options.getTfam(), snpListFile, keepRemoveSamples);
+				Genotypes genotypes = new TPlink(options.getTped(), options.getTfam(), snpListFile, keepRemoveSamples, options);
 				
 				// verify all SNPs from snpListFile are in genotypes
 				checkSnpsAreInGenotypeFile(snpListFile);
 						
 				// prune the list of SNPs
-				Pruner pruner = new Pruner(genotypes, snpListFile, ldFile);
+				Pruner pruner = new Pruner(genotypes, snpListFile, ldFile, options);
 				
 				// write the results file
-				new ResultsFile(snpListFile);
+				new ResultsFile(snpListFile, options);
 				
 				LogWriter.getLogger().info("\nAnalysis finished: " + new Date());
 				long end = System.currentTimeMillis();

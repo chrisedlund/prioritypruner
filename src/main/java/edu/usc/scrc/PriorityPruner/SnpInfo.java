@@ -230,12 +230,12 @@ public class SnpInfo implements Comparable<SnpInfo> {
 		this.sortedByPosIndex = sortedByPosIndex;
 	}
 
-	public boolean getPassDesignScore() throws PriorityPrunerException {
-		if (this.designScore >= CommandLineOptions.getInstance().getMinDesignScore()) {
-			return true;
-		}
-		return false;
-	}
+//	public boolean getPassDesignScore() throws PriorityPrunerException {
+//		if (this.designScore >= CommandLineOptions.getInstance().getMinDesignScore()) {
+//			return true;
+//		}
+//		return false;
+//	}
 
 	public SnpGenotypes getSnpGenotypes() {
 		return snpGenotypes;

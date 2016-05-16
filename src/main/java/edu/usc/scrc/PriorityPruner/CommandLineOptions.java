@@ -98,7 +98,7 @@ public class CommandLineOptions {
 	 * @throws PriorityPrunerException
 	 *             if errors are encountered during parsing
 	 */
-	private CommandLineOptions(String[] args) throws PriorityPrunerException {
+	public CommandLineOptions(String[] args) throws PriorityPrunerException {
 		Options helpOptions = initHelpOptions();
 		Options options = initOptions();
 		// if help option is encountered
@@ -109,8 +109,9 @@ public class CommandLineOptions {
 		}
 	}
 
-	private CommandLineOptions(){
-		
+	public CommandLineOptions(){
+		Options helpOptions = initHelpOptions();
+		Options options = initOptions();
 	}
 	/**
 	 * To implement the Singleton-pattern, the following two getInstance-methods
@@ -124,16 +125,16 @@ public class CommandLineOptions {
 	 * @throws PriorityPrunerException
 	 *             if errors occur during parsing
 	 */
-	public static CommandLineOptions getInstance(String[] args)
-			throws PriorityPrunerException {
-
-		//if (singletonObject == null) {
-			singletonObject = new CommandLineOptions(args);
-		//	return singletonObject;
-		//} else {
-			return singletonObject;
-		//}
-	}
+//	public static CommandLineOptions getInstance(String[] args)
+//			throws PriorityPrunerException {
+//
+//		//if (singletonObject == null) {
+//			singletonObject = new CommandLineOptions(args);
+//		//	return singletonObject;
+//		//} else {
+//			return singletonObject;
+//		//}
+//	}
 
 	/**
 	 * To implement the Singleton-pattern, this and the previous
@@ -145,20 +146,20 @@ public class CommandLineOptions {
 	 * @throws PriorityPrunerException
 	 *             if an instance isn't already initialized
 	 */
-	public static CommandLineOptions getInstance()
-			throws PriorityPrunerException {
-
-		if (singletonObject == null) {
-			// TODO: What kind of message should go here? This should hopefully
-			// never happen?
-			singletonObject = new CommandLineOptions();
-			return singletonObject;
-			//throw new PriorityPrunerException(
-			//		"An instance of CommandLineOptions is not yet initialized.");
-		} else {
-			return singletonObject;
-		}
-	}
+//	public static CommandLineOptions getInstance()
+//			throws PriorityPrunerException {
+//
+//		if (singletonObject == null) {
+//			// TODO: What kind of message should go here? This should hopefully
+//			// never happen?
+//			singletonObject = new CommandLineOptions();
+//			return singletonObject;
+//			//throw new PriorityPrunerException(
+//			//		"An instance of CommandLineOptions is not yet initialized.");
+//		} else {
+//			return singletonObject;
+//		}
+//	}
 
 	/**
 	 * Creates an Option-object with both a full and a shorthand version of its

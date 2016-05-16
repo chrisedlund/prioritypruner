@@ -43,7 +43,7 @@ public class Pruner {
 	private LinkageDisequilibriumFile ldFile;
 	private Genotypes genotypes;
 	private int pickOrder = 1;
-	private CommandLineOptions options = CommandLineOptions.getInstance();
+	private CommandLineOptions options = null;
 	//private BufferedWriter ldWriter = null;
 
 	/**
@@ -60,10 +60,11 @@ public class Pruner {
 	 *             if problems are encountered during parsing or pruning
 	 */
 	public Pruner(Genotypes genotypes, SnpListFile snpListFile, 
-			LinkageDisequilibriumFile ldFile) throws PriorityPrunerException {
+			LinkageDisequilibriumFile ldFile, CommandLineOptions options) throws PriorityPrunerException {
 		
 		this.snpListFile = snpListFile;
 		this.ldFile = ldFile;
+		this.options = options;
 		
 		// parse the list of samples defined by the --keep or --remove options if specified
 //		PlinkSampleListFile keepRemoveSamples = null;

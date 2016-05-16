@@ -52,8 +52,10 @@ import java.util.StringJoiner;
 public class LinkageDisequilibriumFile {
 
 	private BufferedWriter ldWriter = null;
+	CommandLineOptions options = null;
 	
-	public LinkageDisequilibriumFile() throws PriorityPrunerException{
+	public LinkageDisequilibriumFile(CommandLineOptions options) throws PriorityPrunerException{
+		this.options = options;
 		createLdFile();
 	}
 	
@@ -81,12 +83,12 @@ public class LinkageDisequilibriumFile {
 	private void createLdFile() throws PriorityPrunerException {
 
 
-		CommandLineOptions options = CommandLineOptions.getInstance();
+		//CommandLineOptions options = CommandLineOptions.getInstance();
 		
 		try {
 			// creates output file
-			LogWriter.getLogger().info("Writing LD metrics to [ " + options.getOutputPrefix() + ".ld" + " ]");
-			File outputFile = new File(options.getOutputPrefix() + ".ld");
+			LogWriter.getLogger().info("Writing LD metrics to [ " + this.options.getOutputPrefix() + ".ld" + " ]");
+			File outputFile = new File(this.options.getOutputPrefix() + ".ld");
 			this.ldWriter = new BufferedWriter(new FileWriter(outputFile));
 			
 			ldWriter.write("index_snp_name" + "\t" + "index_snp_chr" + "\t" + "index_snp_pos" + "\t"

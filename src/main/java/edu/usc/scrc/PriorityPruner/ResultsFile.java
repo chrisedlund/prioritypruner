@@ -40,8 +40,10 @@ import java.io.IOException;
  */
 public class ResultsFile {
 
+	private CommandLineOptions options = null;
 	
-	public ResultsFile(SnpListFile snpListFile) throws PriorityPrunerException{
+	public ResultsFile(SnpListFile snpListFile, CommandLineOptions options) throws PriorityPrunerException{
+		this.options = options;
 		createResultsFile(snpListFile);
 	}
 	
@@ -57,16 +59,16 @@ public class ResultsFile {
 
 		BufferedWriter writer = null;
 		
-		CommandLineOptions options = CommandLineOptions.getInstance();
+		//CommandLineOptions options = CommandLineOptions.getInstance();
 		
 		try {
 			// creates output file
 			//DecimalFormat df = new DecimalFormat("0.00##");
 			
-			File outputFile = new File(options.getOutputPrefix() + ".results");
+			File outputFile = new File(this.options.getOutputPrefix() + ".results");
 			writer = new BufferedWriter(new FileWriter(outputFile));
 			
-			LogWriter.getLogger().info("Writing pruning results to [ " + options.getOutputPrefix() + ".results" + " ]");
+			LogWriter.getLogger().info("Writing pruning results to [ " + this.options.getOutputPrefix() + ".results" + " ]");
 			// writes to log and output files
 			
 			writer.write("name" + "\t" + "chr" + "\t" + "pos" + "\t" + "a1" + "\t" + "a2" + "\t" 
