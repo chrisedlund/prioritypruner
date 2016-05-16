@@ -109,6 +109,9 @@ public class CommandLineOptions {
 		}
 	}
 
+	private CommandLineOptions(){
+		
+	}
 	/**
 	 * To implement the Singleton-pattern, the following two getInstance-methods
 	 * manages the public access to this class. This method calls the private
@@ -148,8 +151,10 @@ public class CommandLineOptions {
 		if (singletonObject == null) {
 			// TODO: What kind of message should go here? This should hopefully
 			// never happen?
-			throw new PriorityPrunerException(
-					"An instance of CommandLineOptions is not yet initialized.");
+			singletonObject = new CommandLineOptions();
+			return singletonObject;
+			//throw new PriorityPrunerException(
+			//		"An instance of CommandLineOptions is not yet initialized.");
 		} else {
 			return singletonObject;
 		}
