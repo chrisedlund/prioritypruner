@@ -127,12 +127,12 @@ public class CommandLineOptions {
 	public static CommandLineOptions getInstance(String[] args)
 			throws PriorityPrunerException {
 
-		if (singletonObject == null) {
+		//if (singletonObject == null) {
 			singletonObject = new CommandLineOptions(args);
+		//	return singletonObject;
+		//} else {
 			return singletonObject;
-		} else {
-			return singletonObject;
-		}
+		//}
 	}
 
 	/**

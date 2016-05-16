@@ -169,7 +169,9 @@ public class PriorityPruner {
 			}
 			if (logFileAppender != null){
 				logFileAppender.close();
+				Logger.getRootLogger().removeAppender(logFileAppender);
 			}
+			
 			//exit
 			System.exit(returnCode);
 		}
