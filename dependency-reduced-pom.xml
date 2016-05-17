@@ -48,6 +48,7 @@
               <goal>shade</goal>
             </goals>
             <configuration>
+              <finalName>${project.artifactId}-${project.version}</finalName>
               <artifactSet>
                 <excludes>
                   <exclude>junit:junit</exclude>
@@ -74,5 +75,8 @@
       </exclusions>
     </dependency>
   </dependencies>
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
 </project>
 
