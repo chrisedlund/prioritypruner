@@ -142,7 +142,7 @@ public class SnpListFile {
 					|| !header[6].equals("forceSelect")
 					|| !header[7].equals("designScore")) {
 				throw new PriorityPrunerException(
-						"The first 9 columns in the SNP Input Table should " +
+						"The first 8 columns in the SNP Input Table should " +
 						" equal: \"name\", \"chr\", \"pos\", \"a1\", \"a2\", \"p\", " + 
 						"\"forceSelect\", \"designScore\", separated by tabs " + 
 						" or spaces. Note that column names are case-sensitive.");
