@@ -8,7 +8,7 @@ Usage
 
 Documentation
 -------------
-* Documentation is available at <prioritypruner.sourceforge.net/documentation.html>.
+Documentation is available at [prioritypruner.sourceforge.net/documentation.html](prioritypruner.sourceforge.net/documentation.html)
 
 
 Building from source code
