@@ -335,8 +335,9 @@ public class SnpGenotypes {
 			byte genotype = this.getByteGenotype(f);
 			
 			if (!haploid) {
+				numChromosomes+= 2;
 				if (genotype != 0) {
-					numChromosomes+= 2;
+					
 					if (genotype == 3) {
 						founderHetCount++;
 						numAllele1++;
@@ -352,9 +353,9 @@ public class SnpGenotypes {
 					numMissing+= 2;
 				}
 			}else{
-				
+				numChromosomes+= 1;
 				if (genotype != 0) {
-					numChromosomes+= 1;
+					
 					if (genotype == 1){
 						numAllele1+=1;
 					} else if (genotype == 2){

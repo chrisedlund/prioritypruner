@@ -64,7 +64,7 @@ public class PriorityPruner {
 				Logger.getRootLogger().addAppender(defaultLogFileAppender);
 				// TODO: update download info
 				LogWriter.getLogger()
-						.info("Welcome to PriorityPruner version 0.1.3 \n\nFor latest version please visit: http://prioritypruner.sourceforge.net\n(C) 2016 Christopher K. Edlund et al., The MIT License (MIT)\n-------------------------------------------------------------------------------\n");
+						.info("Welcome to PriorityPruner version 0.1.4 \n\nFor latest version please visit: http://prioritypruner.sourceforge.net\n(C) 2016 Christopher K. Edlund et al., The MIT License (MIT)\n-------------------------------------------------------------------------------\n");
 				LogWriter.getLogger().warn("ERROR: " + e.getMessage());	
 				defaultLogFileAppender.close();
 				System.exit(1);
@@ -80,7 +80,7 @@ public class PriorityPruner {
 			// TODO: update download info
 			LogWriter
 					.getLogger()
-					.info("Welcome to PriorityPruner version 0.1.3 \n\nFor latest version please visit: http://prioritypruner.sourceforge.net\n(C) 2016 Christopher K. Edlund et al., The MIT License (MIT)\n-------------------------------------------------------------------------------\n");
+					.info("Welcome to PriorityPruner version 0.1.4 \n\nFor latest version please visit: http://prioritypruner.sourceforge.net\n(C) 2016 Christopher K. Edlund et al., The MIT License (MIT)\n-------------------------------------------------------------------------------\n");
 			
 			long start = System.currentTimeMillis();
 			if (options.getOutputPrefix()!= null){
