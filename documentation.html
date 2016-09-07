@@ -1,0 +1,714 @@
+<!DOCTYPE HTML>
+<html lang="en">
+  <head>
+  <title>PriorityPruner</title>
+  <meta name="description" content="Software for priority-based linkage disequilbrium pruning" />
+  <meta name="keywords" content="pruning, LD, linkage disequilibrium, bioinformatics, tagging, tagSNP, pruner, GWAS, LD pruning, LD pruner, software, SNP, linkage disequilbrium pruner, LD clumping, LD-based clumping, PLINK" />
+  <meta name="author" content="Christopher K. Edlund" />
+  <meta http-equiv="content-type" content="text/html; charset=windows-1252" />
+  <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Tangerine&amp;v1" />
+  <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Yanone+Kaffeesatz" />
+  <link rel="stylesheet" type="text/css" href="style/style.css" />
+  </head>
+  
+  
+  <body>
+  <div id="main">
+    <div id="header">
+      <div id="logo">
+        <h1>Priority<a href="index.html">Pruner</a></h1>
+      </div>
+      <div id="menubar">
+        <ul id="menu">
+          <!-- put class="current" in the li tag for the selected page - to highlight which page you're on -->
+          <li><a href="index.html">Home</a></li>
+          <li class="current"><a href="documentation.html">Documentation</a></li>
+          <li><a href="downloads.html">Downloads</a></li>
+        </ul>
+      </div>
+    </div>
+    <div id="site_content">
+    	<div id="content_no_side">
+      <br>
+      <h2>Table of Contents</h2>
+      <ol>
+        <li><a href="#OVERVIEW">Overview</a></li>
+        <li><a href="#GETTING_STARTED">Getting Started</a></li>
+        <li><a href="#ALGORITHM">Algorithm</a></li>
+        <li><a href="#BASIC_USAGE">Basic Usage</a></li>
+        <li><a href="#ADVANCED_USAGE">Advanced Usage</a></li>
+        <li><a href="#EXAMPLES">Examples</a></li>
+      </ol>
+      <hr>
+      <h2>1. Overview<a name="OVERVIEW"></a></h2>
+      <br>
+      <p>
+      <b>PriorityPruner</b> is a software program which can prune a list of SNPs that are in high linkage disequilibrium (LD) with other SNPs in the list,
+		  while preferentially keeping SNPs of higher priority (e.g., the most significant SNPs in a genome-wide association study). The process of pruning
+		  SNPs based on LD is sometimes referred to as "LD clumping".
+		  </p>
+      <br>
+      <h2>2. Getting Started<a name="GETTING_STARTED"></a></h2><br>
+      <h3>2.1 Operating Systems</h3>
+      <p>PriorityPruner works on multiple operating systems, such as Windows, Mac, and Linux. As long as you are able to install Java on your computer,
+        the PriorityPruner should be able to run on your system.
+      </p>
+      <br>
+	
+	
+      <h3>2.2 Java Installation</h3>
+	
+      <p>PriorityPruner requires an installation of Java 1.8 or later. 
+	       Visit the Java <a href="https://www.java.com/en/download/">website</a> for instructions on downloading and installing Java.
+	    </p>
+	    <br>
+	
+      <h3>2.3 Download PriorityPruner</h3>
+	
+      <p>The PriorityPruner command-line software is packaged as executable jar file and can be <a href="downloads.html">downloaded here</a>.
+      </p>
+      <br>
+	
+      <h3>2.4 Running PriorityPruner</h3>
+	
+      <p>You can run PriorityPruner with the Java launcher (java command). The basic command is:
+      </p>
+      
+      <p class="codebox">java -jar PriorityPruner.jar [OPTIONS]
+      </p>
+      <br>
+      
+      <h2>3. Algorithm<a name="ALGORITHM"></a></h2><br>
+      
+	    <p>PriorityPruner works by removing SNPs that are in LD with the most significant or most important SNPs in your dataset. It 
+	    	starts by selecting (keeping) the most significant or "index" SNP (having the lowest p), calculates LD with surrounding SNPs, and marks those SNPs 
+	    	above a certain <i>r</i><sup>2</sup> as "tagged". Additional surrogate SNPs for the index SNP are then picked according the user-defined options.
+	    	At this point, the newly tagged SNPs are no longer eligible for selection. The process then repeats, using the most significant, eligible SNP as the index SNP.
+	    	This continues until there are no more eligible SNPs to select. 
+	      <br>	<br>
+
+	    	In the end, each SNP in the data set is either "selected", "tagged", both, or neither (in the case SNPs filtered by MAF, design score, etc. which are not in LD with a selected SNP). Thus,
+	    	your pruned set of SNPs are all the SNPs that are "selected". 
+	    	
+			<br>	<br>
+	        This is the pruning algorithm in more detail:<br><br>
+	        
+	        V = {v<sub>1</sub>, v<sub>2</sub>, ..., v<sub>m</sub>}, the set of all SNPs in the data set<br>
+	        E = {e<sub>1</sub>, e<sub>2</sub>, ..., e<sub>o</sub>}, the set of all eligible SNPs in the dataset (passing user-defined filters), E&sub;V<br>
+
+	        <br>
+	        Each SNP has the following properties:<br>
+					<ul>
+						<li  style="margin-left:2%;">chr - Chromosome (e.g., chr1) (user-supplied).. </li>
+						<li style="margin-left:2%;">pos - Physical position of the SNP (user-supplied).</li> 
+						<li style="margin-left:2%;">p - P-value or other prioritization metric (user-supplied).
+						<li style="margin-left:2%;">forceSelect - true/false flag indicating if the SNP should be force selected (user-supplied).
+						<li style="margin-left:2%;">V - metric values, where V = {v<sub>1</sub>, v<sub>2</sub>, ... v<sub>N</sub>}</b>, for corresponding metrics to weight on for surrogate selection (user-supplied).</li>
+						<li style="margin-left:2%;">tagged - true/false (intialized to false, updated by algorithm). </li>
+						<li style="margin-left:2%;">selected - true/false (intialized to false, updated by algorithm). </li>
+					</ul>
+			</p>	
+	<p>				
+	The following steps are performed by the algorithm:<br><br>
+	
+					<ol>
+						<li style="margin-left:2%;">Set <i>e-index</i> as the SNP in E with the lowest p (choose SNPs with forceSelect=true first)</li>
+						<li style="margin-left:2%;">Set <i>e-index</i>.selected to true</li>
+						<li style="margin-left:2%;">Set <i>e-index</i>.tagged to true</li>
+						<li style="margin-left:2%;">Remove <i>e-index</i> from E</li>
+						<li style="margin-left:2%;">Calculate pairwise <i>r</i><sup>2</sup> between <i>e-index</i> and all other SNPs in V on the same chromosome and within a certain distance (see --max_distance option)</li>
+						<li style="margin-left:2%;">Let G be the set of SNPs from step 4 with pairwise <i>r</i><sup>2</sup> &ge; threshold defined by user (see --r2 and --r2t options)</li>
+						<li style="margin-left:2%;">For each SNP g<sub>i</sub> in G, set g<sub>i</sub>.tagged to true</li>
+						<li style="margin-left:2%;">Determine the number of surrogate SNPs, R, to select, based on <i>e-index</i>.p and user-defined options (see <a href="#SURROGATES">Surrogates</a> )</li>
+						<li style="margin-left:2%;">If R > 0:</li>
+						<ol style="margin-left:2%;" type="a">
+								<li style="margin-left:5%;">For each SNP ge<sub>i</sub> in G &#8745; E, calculate a score ge<sub>i</sub>.S, using metric values ge<sub>i</sub>.V and user-defined metric weights (see <a href="#SURROGATES">Surrogates</a>)</li>
+								<li style="margin-left:5%;">For the top R SNPs ge<sub>i</sub> in G &#8745; E with the highest score ge<sub>i</sub>.S, set ge<sub>i</sub>.selected to true (choose SNPs with forceSelect=true first), and remove from E</li>
+						</ol>
+						<li style="margin-left:2%;">For each SNP g<sub>i</sub> in G, remove g<sub>i</sub> from E if it exists, unless g<sub>i</sub>.forceSelect = true</li>
+						<li style="margin-left:2%;">Repeat steps 1 - 10 until E is empty</li>
+					</ol>
+	    </p>	
+	    
+	    
+      <h2>4. Basic Usage<a name="BASIC_USAGE"></a></h2><br>
+      <h3>4.1 Input Files</h3><br>
+      <h4>4.1.1 Genotype Dataset (required)</h4><br>
+	
+	<p>
+	A genotype dataset containing genotypes to calculate pairwise <i>r</i><sup>2</sup> values is required. These can be genotypes from your own study or from 
+	a public reference dataset such as HapMap or 1000 Genomes. It must contain all the SNPs
+	defined in the SNP Input Table below. The data set can be specified with one of the following options. Note that LD is  
+	calculated accurately for chromosome X if it is defined as 'X', 'chrX', or '23' and gender is accurately designated for all samples in the genotype dataset. </p>  <br>
+	
+	--tfile &lt;input_prefix&gt;  
+	
+	    <p style="margin-left:5%;">This option defines the prefix of Transposed PLINK file set. 
+	      Use of this option implies that a .tped and .tfam file exist with the specified prefix. 
+	      See <a href="http://pngu.mgh.harvard.edu/~purcell/plink/data.shtml#tr">http://pngu.mgh.harvard.edu/~purcell/plink/data.shtml#tr</a> for  
+        formatting information. The missing gentoype code is 0 (either both alleles should be missing or neither). 
+		       <br><br>
+		       Example:
+		  </p> 
+		    
+		  <p style="margin-left:5%;" class="codebox">--tfile myfile
+		  </p>
+
+  --tped &lt;tped_filename&gt; --tfam &lt;tfam_filename&gt;
+  
+	    <p style="margin-left:5%;">This option indivdually specifies the .tped and .tfam files of a Transposed PLINK file set. 
+	       See <a href="http://pngu.mgh.harvard.edu/~purcell/plink/data.shtml#tr">http://pngu.mgh.harvard.edu/~purcell/plink/data.shtml#tr</a> for  
+         formatting information. The missing gentoype code is 0 (either both alleles should be missing or neither). 
+		      <br><br>
+		       Example:
+		  </p> 
+		    
+		  <p style="margin-left:5%;" class="codebox">--tped myfile.tped --tfam myfile.tfam
+		  </p><br>
+	
+	    <h4>3.1.2 SNP Input Table (required)</h4>
+	    <br>
+	
+	--snp_table &lt;input_filename&gt;
+	
+	    <p style="margin-left:5%;">This option specfies a file containing the set of SNPs to prune. Any SNPs from the genotype dataset that are missing 
+		      from this file will be excluded from the analysis. The SNP names, chromosomes, positions and alleles should match the genotype file for each 
+		      corresponding SNP. 
+		      The file should be a tab- or space-delimited with the following ordered columns. A header line with the column names below is required (case-sensitive).
+	        <br><br>
+	        Required Columns:<br>
+	
+					<ol  style="margin-left:5%;">
+						<li  style="margin-left:5%;"><b>name</b> - Name of the SNP (e.g., rs222).</li>
+						<li  style="margin-left:5%;"><b>chr</b> - Name of the chromosome (e.g., 1, chr1). Chromosome X must be denoted as either 'X', 'chrX' or '23'. Chromosome Y and MT are not supported.</li>
+						<li style="margin-left:5%;"><b>pos</b> - Physical position of the SNP.</li> 
+						<li style="margin-left:5%;"><b>a1</b> - First allele of the SNP.</li> 
+						<li style="margin-left:5%;"><b>a2</b> - Second allele of the SNP.</li>
+						<li style="margin-left:5%;"><b>p</b> - P-value or other prioritization metric between 0 and 1. This is used for prioritizing the selection of SNPs, where lower numbers are prioritized.</li>
+						<li style="margin-left:5%;"><b>forceSelect</b> - Flag indicating if the SNP should be selected (kept) regardless of its LD with other selected SNPs or other 
+						filtering criteria specified, such as MAF or design score (1=true, 0=false).</li>
+						<li style="margin-left:5%;"><b>designScore</b> - Design score of the SNP (any positive real number). Can be filled in with a constant value (e.g., 1) if unknown. </li>
+					</ol>
+	    </p>	
+	    
+	    <p style="margin-left:5%;">
+	      Optional Columns:<br><br>
+		    Any number of additional metric columns containing real numbers may be added after the required columns. These can be used for weighting 
+			  the selection of surrogate SNPs. See the --metric option in the Advanced Usage section for more information.
+		    <br><br>
+		 
+		    Example:
+		  </p>
+		  
+		  <p style="margin-left:5%;" class="codebox">--snp_table table.txt 
+		  </p>
+		  
+		  <p style="margin-left:5%;">
+		    Example formatting of SNP table (customScore and isExonic are examples of optional metric columns):<br>
+		 
+				<table style="margin-left:5%;" width="100%" border="0" cellpadding="2" bordercolor="#808080" cellspacing="2" bgcolor="#ffffff" class="codebox">
+				<tr valign="top">
+				<td><b>name</b></td><td><b>chr</b></td><td><b>pos</b></td><td><b>a1</b></td><td><b>a2</b></td><td><b>p</b></td><td><b>forceSelect</b></td><td><b>designScore</b></td><td><b>customScore</b></td><td><b>isExonic</b></td></tr>
+				<tr valign="top">
+				<td>snp1</td><td>1</td><td>15351223</td><td>A</td><td>T</td><td>0.00056</td><td>0</td><td>0.98</td><td>0.22</td><td>0</td></tr>
+				<tr valign="top">
+				<td>snp2</td><td>1</td><td>15351265</td><td>C</td><td>A</td><td>0.00047</td><td>0</td><td>1.1</td><td>0.23</td><td>1</td></tr>
+				<tr valign="top">
+				<td>snp3</td><td>1</td><td>15351280</td><td>G</td><td>C</td><td>0.00098</td><td>0</td><td>0.12</td><td>0.23</td><td>0</td></tr>
+				<tr valign="top">
+				<td>snp4</td><td>2</td><td>546842</td><td>T</td><td>C</td><td>0.0045</td><td>0</td><td>0.67</td><td>0.112</td><td>0</td></tr>
+				<tr valign="top">
+				<td>snp5</td><td>2</td><td>546845</td><td>ATG</td><td>A</td><td>0.0082</td><td>0</td><td>0.88</td><td>0.098</td><td>1</td></tr>
+				<tr valign="top">
+				<td>snp6</td><td>2</td><td>546928</td><td>AAAA</td><td>A</td><td>0.0014</td><td>1</td><td>0</td><td>0.285</td><td>0</td></tr>
+				</table>
+      </p><br>
+		
+		  <!-- Basic Pruning Options -->
+		
+		  <h3>4.2 Basic Pruning Options</h3><br>
+		
+		  <!-- r2 Thresholds -->
+		
+		  <h4>4.2.1 <i>r</i><sup>2</sup> Threshold(s) (required)</h4>
+		  
+		  <p>
+		     As the software iterates over the list of inputted SNPs, pairwise <i>r</i><sup>2</sup> is calculated with nearby SNPs 
+		     using the same expectation–maximization (EM) algorithm as
+		     <a href="http://www.broadinstitute.org/scientific-community/science/programs/medical-and-population-genetics/haploview/haploview">
+		     Haploview</a> (Barrett et al., 2004). One of the two options below must be used to define the <i>r</i><sup>2</sup> threshold(s) to use for
+		     pruning SNPs. 
+		  </p>
+		
+		  <p>
+		    --r2 &lt;<i>r</i><sup>2</sup>&gt;
+	      <p style="margin-left:5%;">This option defines a fixed <i>r</i><sup>2</sup> threshold to use for all SNPs.
+		       <br><br>
+		       Example:
+		    </p>
+		     
+		    <p style="margin-left:5%;" class="codebox">--r2 0.8 
+		    </p>
+		    
+			  <p  style="margin-left:5%;">The above example defines a <i>r</i><sup>2</sup> threshold of 0.8 for all SNPs.
+			  </p>
+		  </p>
+		 
+		 
+		  <br><br>
+		       OR
+		  <br><br>
+		  <p>
+		     --r2t &lt;p-value&gt; &lt;<i>r</i><sup>2</sup>&gt;
+		    <p style="margin-left:5%;">This option can be used multiple times to define a r<sup>2</sup> threshold 
+	   	      for SNPs with a p-value less than or equal to the specified amount and greater than the next 
+		        lowest defined p-value threshold (or 0 if no lower threshold is defined). Note that the p-value of the 
+		        SNP actively being pruned is used to determine which r<sup>2</sup> threshold is used. If a p-value 
+			      threshold is undefined for a given range, the program will exit if it encounters a SNP having a p-value 
+			     in that range.  
+		       <br><br>
+		       Example:
+		    </p> 
+		    
+		    <p style="margin-left:5%;" class="codebox">--r2t 1 0.8 --r2t 0.001 0.9 
+		    </p>
+		    
+			  <p style="margin-left:5%;">The above example defines a <i>r</i><sup>2</sup> threshold of 0.9 for SNPs with a p&#8804;0.001, and
+			     0.8 for all other SNPs (0.001 &lt; p &#8804; 1).
+			  </p>
+		   
+		  </p>
+		  
+		  
+		  <br><br>
+		
+		  <!-- Minimum Design Score -->
+		
+	    <h4>4.2.2 Minimum Design Score</h4>
+		  <p>
+		     --min_design_score &lt;float&gt;
+	      <p style="margin-left:5%;">This option defines the minimum design score required for a SNP to be selected (i.e., kept). It does not 
+	        apply to force-selected SNPs. The default threshold is 0, meaning no SNPs will be excluded based on design score.
+	        <br><br>
+		       Example:
+		    </p> 
+		    
+		    <p style="margin-left:5%;" class="codebox">--min_design_score 0.4
+		    </p>
+		    
+		  </p>
+		  <br><br>
+		
+		  <!-- Chromosome -->
+		
+	    <h4>4.2.3 Chromosome</h4>
+		  <p>
+		     --chr &lt;chromosome&gt;
+	       <p style="margin-left:5%;">This option limits the processing and output to the chromosome specified. If not defined, all chromosomes will be processed.
+	          Note that in order for chromosome X to be processed correctly, the chromosome field in the genotype data set and snp input table must
+	          either be 'X' or 'chrX'. Chromosome Y and MT are not supported. 
+		       <br><br>
+		       Example:
+		    </p> 
+		    
+		    <p style="margin-left:5%;" class="codebox">--chr 22
+		    </p>
+		    
+		  </p>
+		  <br><br>
+		  
+	    <!-- MaxDistance -->
+		
+	    <h4>4.2.4 Maximum Distance </h4>
+		  <p>
+		     --max_distance &lt;integer&gt;
+	      <p style="margin-left:5%;">This option sets the maximum distance (in base pairs) away (either to the left or right) from each SNP to prune SNPs in LD. 
+	         The default value is 500000. 
+	        <br><br>
+		       Example:
+		    </p> 
+		    
+		    <p style="margin-left:5%;" class="codebox">--max_distance 100000
+		    </p>
+		    
+		  </p>
+		  <br><br>
+		
+		  <!-- Minor Allele Frequency -->
+		
+	    <h4>4.2.5 Minor Allele Frequency </h4>
+		  <p>
+		    --min_maf &lt;float&gt;
+	      <p style="margin-left:5%;">This option sets the minimum minor allele frequency (MAF) [0.0-0.5] for a SNP to be selected (i.e., kept) or considered tagged by a 
+	          selected SNP. It does not apply to force-selected SNPs. 
+	          The default value is 0, meaning no SNPs will be excluded based on MAF. 	         
+	        <br><br>
+		       Example:
+		    </p> 
+		    
+		    <p style="margin-left:5%;" class="codebox">--min_maf 0.05
+		    </p>
+	      
+		  </p>
+		  <br><br>
+		
+		  <!-- --min_snp_callrate -->
+		
+	    <h4>4.2.6 Minimum SNP Call Rate </h4>
+		  <p>
+		      --min_snp_callrate &lt;float&gt;
+	      <p style="margin-left:5%;">This option sets the minimum SNP call rate [0.0-1.0] for a SNP to be selected (i.e., kept) or considered tagged by a 
+	        selected SNP. It does not apply to force-selected SNPs. 
+	        The default value is 0.1, meaning SNPs with a call rate <10% will be excluded. 
+	        <br><br>
+		       Example:
+		    </p> 
+		    
+		    <p style="margin-left:5%;" class="codebox">--min_snp_callrate 0.9
+		    </p>
+		    
+		  </p>		  
+		  <br><br>
+		
+		  <!-- --min_hwe -->
+		
+	<!--    <h4>3.2.7 Minimum Hardy-Weinberg Equilibrium P-value  </h4>
+		  <p>
+		    --min_hwe &lt;float&gt;
+	      <p style="margin-left:5%;">This option sets the minimium Hardy-Weinberg Equilibrium (HWE) P-value [0.0-1.0] (considering all included samples) 
+	        for a SNP to be selected (i.e., kept) or considered tagged by a 
+	        selected SNP. It does not apply to force-selected SNPs. The default value is 0, meaning no SNPs will be excluded based on HWE. 
+	        <br><br>
+		       Example:
+		    </p> 
+		    
+		    <p style="margin-left:5%;" class="codebox">--min_hwe 0.0001
+		    </p>
+	      
+		  </p>
+		  
+		  <br><br>	-->
+		
+		
+		<!-- Help -->
+		
+	    <h4>4.2.8 Print Help  </h4>
+		  <p>
+		    --help
+	      <p style="margin-left:5%;">Prints a list of program options to the screen. 
+	      </p>
+		  </p>
+		  <br><br>	
+		
+		  <!-- Output Files -->
+		
+		  <h3>4.3 Output Files</h3><br>
+		
+		
+		  <!-- Output Prefix -->
+		
+		  <h4>4.3.1 Output Prefix</h4>
+		  <p>
+		     --out &lt;output_prefix&gt;
+	       <p style="margin-left:5%;">This option is used to specify the prefix of all output files produced by the software. Note that 
+	          the program will overwrite any existing files with the same name. The default prefix is 'prioritypruner'.
+	         <br><br>
+		       Example:
+		    </p> 
+		    
+		    <p style="margin-left:5%;" class="codebox">--out my_results
+		    </p>
+	       
+		  </p><br>
+		   
+		  <!-- Main Output -->
+		
+		  <h4>4.3.2 Main Output</h4>
+		  <p>By default the software will create the following output files (any existing files will be overwritten):<br><br>
+		  </p>
+
+<p style="margin-left:5%;">
+		   <b>&lt;output_prefix&gt;.results</b> - This file contains the results of the SNP pruning. It has the following columns (tab-delimited):
+				    <br>
+				    <ol style="margin-left:10%;">
+				    	<li><b>name</b> - Name of the SNP</li>
+							<li><b>chr</b> - Name of the chromosome</li>
+							<li><b>pos</b> - Physical position of the SNP.</li> 
+							<li><b>a1</b> - First allele of the SNP.</li> 
+							<li><b>a2</b> - Second allele of the SNP.</li>
+				    	<li><b>tagged</b> - 1 if tagged by a selected SNP (i.e., <i>r</i><sup>2</sup> greater than or equal to the user-defined threshold), otherwise 0
+				    	</li> 
+				   	 	<li><b>selected</b>  - 1 if selected as a tag SNP (i.e., not pruned), otherwise 0 
+				   	 	</li>
+				   	 	<li><b>best_tag</b>  - Selected tag SNP that tags this SNP with the highest pairwise <i>r</i><sup>2</sup>. NA if this SNP is not tagged.
+				   	 	</li>
+				   	 	<li><b>r^2</b>  - Pairwise <i>r</i><sup>2</sup> between this SNP and its best tag. NA if this SNP is not tagged.
+				   	 	</li>
+				    </ol>
+</p>
+
+		  <p style="margin-left:5%;">
+		    Example of results table:<br>
+		 
+				<table style="margin-left:5%;" width="100%" border="0" cellpadding="2" bordercolor="#808080" cellspacing="2" bgcolor="#ffffff" class="codebox">
+				<tr valign="top">
+				<td><b>name</b></td><td><b>chr</b></td><td><b>pos</b></td><td><b>a1</b></td><td><b>a2</b></td><td><b>tagged</b></td><td><b>selected</b></td><td><b>best_tag</b></td><td><b>r^2</b></td></tr>
+				<tr valign="top">
+				<td>snp1</td><td>1</td><td>15351223</td><td>A</td><td>T</td><td>1</td><td>0</td><td>snp2</td><td>0.97</td></tr>
+				<tr valign="top">
+				<td>snp2</td><td>1</td><td>15351265</td><td>C</td><td>A</td><td>1</td><td>1</td><td>snp2</td><td>1</td></tr>
+				<tr valign="top">
+				<td>snp3</td><td>1</td><td>15351280</td><td>G</td><td>C</td><td>1</td><td>0</td><td>snp2</td><td>0.85</td></tr>
+				<tr valign="top">
+				<td>snp4</td><td>2</td><td>546842</td><td>T</td><td>C</td><td>1</td><td>1</td><td>snp6</td><td>0.88</td></tr>
+				<tr valign="top">
+				<td>snp5</td><td>2</td><td>546845</td><td>ATG</td><td>A</td><td>0</td><td>0</td><td>NA</td><td>NA</td></tr>
+				<tr valign="top">
+				<td>snp6</td><td>2</td><td>546928</td><td>AAAA</td><td>A</td><td>1</td><td>1</td><td>snp6</td><td>1</td></tr>
+				</table>
+      </p><br>
+
+
+		<p style="margin-left:5%;">
+		    <b>&lt;output_prefix&gt;.log</b> - A log file containing all the screen ouput. 
+		</p>    
+		    <br><br>
+
+		  <h4>4.3.3 LD Output</h4>
+		  <p>
+		     --ld
+	       <p style="margin-left:5%;">When this option is specified, an additional output file will be created containing all pairwise <i>r</i><sup>2</sup> and D'
+	       	calculations between the index SNPs and surrounding SNPs.
+
+		  </p> <br>
+		    
+		   <p style="margin-left:5%;"><b>&lt;output_prefix&gt;.ld</b> - This LD results file contains the following columns (tab-delimited): </p>
+				    <br>
+				    
+				<p>
+				    <ol style="margin-left:10%;">
+				    	<li ><b>index_snp_name</b> - Name of the index SNP</li>
+				    	<li ><b>index_snp_chr</b> - Chromosome of the index SNP</li>
+				    	<li ><b>index_snp_pos</b> - Physical position of the index SNP</li>
+				    	<li ><b>index_snp_a1</b> - Allele 1 of the index SNP</li>
+				    	<li ><b>index_snp_a2</b> - Allele 2 of the index SNP</li>
+							<li ><b>partner_snp_name</b> - Name of the partner SNP</li>
+						  <li ><b>partner_snp_chr</b> - Chromosome of the partner SNP</li>
+				    	<li ><b>partner_snp_pos</b> - Physical position of the partner SNP</li>
+				    	<li ><b>partner_snp_a1</b> - Allele 1 of the partner SNP</li>
+				    	<li ><b>partner_snp_a2</b> - Allele 2 of the partner SNP</li>
+							<li ><b>r^2</b> - Pairwise <i>r</i><sup>2</sup> between the index and partner SNPs</li> 
+							<li ><b>D'</b> - Pairwise D' between the index and partner SNPs</li>
+				    </ol>
+				    
+				    <i>Note that using this option may result in a very large output file.</i>
+	    </p>       
+		  <br>
+		  
+		
+		  <!-- Advanced Pruning Options -->
+		<p>
+		  <h2>5. Advanced Usage<a name="ADVANCED_USAGE"></a></h2> </p><br>
+		
+		  <!-- Advanced Pruning Options -->
+		
+		  <h3>5.1 Advanced Pruning Options</h3><br>
+		
+		  <!-- Surrogates -->
+		
+	    <h4>5.1.1 Surrogates<a name="SURROGATES"></a> </h4>
+	   
+		  <p>
+		      Each time a SNP is selected (i.e., kept), PriorityPruner has the ability to select additional surrogate SNPs 
+		      that are in LD with it (as defined by the --r2 or --r2t options). The options below are used to define how many 
+		      surrogates are selected and how they are prioritized. Note that only as many surrogate SNPs as are available will be selected. 
+		      <br><br>
+		      Force-included SNPs are always selected as surrogates first. If metrics are defined with the --metric option, 
+		      then surrogates are selected in order of decreasing score (i.e., highest score first). If no metrics are 
+		      defined, surrogates are selected in order of decreasing r-squared with the index SNP (i.e., highest r-squared first).
+		 
+		  </p>
+		  <br>
+		 
+		  <!-- --st -->
+		  <p>
+		    --st &lt;p-value&gt; &lt;num_surrogates&gt;
+		    <p style="margin-left:5%;">This option can be used multiple times to define the number of surrogate SNPs that 
+			    should be selected for SNPs with a p-value less than or equal to the specified amount and greater than the next 
+		      lowest defined p-value threshold (or 0 if no lower threshold is defined). Note that the p-value of the 
+		      SNP actively being pruned is used to determine how many surrogate SNPs to select. If a p-value 
+			    threshold is undefined for a given range, no surrogates will be selected. 
+		      <br><br>
+		      Example:
+		    </p> 
+		    
+		    <p style="margin-left:5%;" class="codebox">--st 1 0 --st 0.001 2 
+		    </p>
+			  <p  style="margin-left:5%;">The above example specifies that two additional surrogate SNPs should be selected
+			      for SNPs with a p&#8804;0.001, and
+			      zero surrogates for all other SNPs (0.001 &lt; p &#8804; 1).
+			  </p>
+		   
+		  </p>
+		  <br><br>
+		
+		  <!-- --metric -->
+		  <p>
+		     --metric &lt;metric_name&gt; &lt;metric_weight&gt;
+		  </p>
+		  <p style="margin-left:5%;">This option can be used multiple times to specify how a metric defined in the SNP Input Table should be 
+		      weighted (relative to other metrics) when selecting surrogate SNPs. When one or more surrogates need to be selected,
+		     all potential surrogates markers <i>m</i> are assigned a score <i>S</i> as defined by the following functions: 
+		  </p><br>
+		  <p style="margin-left:5%;"><img src="img/equation1.jpg"  alt="" title="" />
+		  </p>
+		  <p style="margin-left:5%;"><img src="img/equation2.jpg" alt="" title="" />
+		  </p><br>
+		  <p style="margin-left:5%;"> where <i>N</i> is the number of --metric options defined in the command line,
+		      <i>w</i> is the metric weight, <i>v</i> is the corresponding metric value in the SNP Input Table, and <i>P</i> is number of 
+		      potential surrogate markers.
+		  </p>
+		 <!-- Latex for the equations are:
+		 S_{m}=\sum\limits_{i=1}^N w_{i} *    \begin{cases}\frac{v_{mi} - min V_{i}}{max V_{i} -min V_{i}} &max V_{i} \neq min V_{i} \\1 & otherwise\end{cases}
+		  V_{i}= \big\{  v_{mi}   \big\} _{m=1}^P
+		 -->
+
+
+		<!-- --no_surrogates_for_force_included_snps -->
+			<br><br>
+		  <p>
+		     --no_surrogates_for_force_included_snps
+		     <p style="margin-left:5%;">When this option is specified, no surrogates will be selected for force-included SNPs. 
+		          <br>   
+		     </p>
+		  </p>
+			<p>
+		     <!-- --keep --> 
+		     <br><br>
+		     <h4>5.1.2 Keep Individuals </h4> 
+	    </p>
+	    <p>
+		     --keep &lt;filename&gt; 
+		  </p>		 
+		  <p style="margin-left:5%;">This option is used to keep a set of individuals from the inputted genotype dataset. The file specified should have
+	   		one indivdual per line and be tab- or space-delimited with two columns (no header): 1) family ID and 2) individual ID. 
+			  <br><br>
+			  Example:
+		  </p>
+		  <p style="margin-left:5%;" class="codebox">--keep keep_individuals.txt 
+		  </p>
+			 
+		  <p style="margin-left:5%;">
+		     Example formatting of keep file (keep_individuals.txt):<br>
+		  </p>
+		 
+			<table style="margin-left:5%;" border="0" cellpadding="2" bordercolor="#808080" cellspacing="2" bgcolor="#ffffff" class="codebox">
+			<tr valign="top"><td>FAM04</td><td>IND04</td></tr>
+			<tr valign="top"><td>FAM08</td><td>IND08</td></tr>
+			<tr valign="top"><td>FAM12</td><td>IND12</td></tr>
+			<tr valign="top"><td>FAM18</td><td>IND18</td></tr>
+			<tr valign="top"><td>FAM22</td><td>IND22</td></tr>
+			</table>
+					 
+		 
+		 <!-- --keep_random --> 
+		  <br><br>
+		  <h4>5.1.3 Keep Random Individuals </h4> 
+		  <p>
+		     --keep_random &lt;fraction&gt;
+		  </p>
+	    <p style="margin-left:5%;">This option is used to keep a random set of individuals from the inputted genotype dataset. The fraction
+	   		   specified (0.0 - 1.0) defines the percentage of the individuals to be kept. This option is useful for speeding up the program
+			     when you have an especially large genotype data set and only a fraction of the individuals are necessary for accurate LD calculation. 
+
+		     <br><br>
+		     Example:
+		  </p>
+		  <p style="margin-left:5%;" class="codebox">--keep_random 0.2 
+		  </p>
+		 
+		  <p style="margin-left:5%;">The above example will keep 20% of the individuals in the genotype dataset (randomly selected) for calculating LD 
+		      and SNP metrics (MAF, HWE, SNP callrate, etc.).
+		  </p> 
+		 
+		  <!-- --remove --> 
+		  <br><br>
+		  <h4>5.1.4 Remove Individuals </h4> 
+		  <p>
+		     --remove &lt;filename&gt;
+	      <p style="margin-left:5%;">This option is used to remove a set of individuals from the inputted genotype dataset. The file specified should have
+	   		  one indivdual per line and be
+	   		   tab- or space-delimited with two columns (no header): 1) family ID and 2) individual ID. 
+			 
+					  Example:
+		    </p>
+		    <p style="margin-left:5%;" class="codebox">--remove remove_individuals.txt 
+		    </p>
+			 
+		    <p style="margin-left:5%;">
+		       Example formatting of remove file (remove_individuals.txt):<br>
+		    </p>
+		 
+				<table style="margin-left:5%;" border="0" cellpadding="2" bordercolor="#808080" cellspacing="2" bgcolor="#ffffff" class="codebox">
+				<tr valign="top"><td>FAM05</td><td>IND05</td></tr>
+				<tr valign="top"><td>FAM09</td><td>IND09</td></tr>
+				<tr valign="top"><td>FAM14</td><td>IND14</td></tr>
+				<tr valign="top"><td>FAM19</td><td>IND19</td></tr>
+				<tr valign="top"><td>FAM25</td><td>IND25</td></tr>
+				</table>
+		 
+
+		    <!-- --do_not_pick_force_included_first --> 
+		    <br><br>
+		    <h4>5.1.5 Selection Order of Force-Included SNPs </h4> 
+				<p>
+		       --do_not_pick_force_included_first
+	         <p style="margin-left:5%;">By default, the software selects force-included SNPs first and marks SNPs in LD with them as tagged. 
+	           When this option is specified, force-included SNPs are processed in the same order as all other SNPs (i.e., by increasing p-value).
+	      </p>
+		  </p>
+		  
+		  <br><br>	
+	
+		    
+		    
+		  <!-- --verbose --> 
+		  <h4>5.1.6 Verbose </h4> 
+		  <p>
+		    --verbose
+	       <p style="margin-left:5%;">This option is used to output additional information to the screen and log and allows the user to 
+	         see the progress of the pruning. Note that this option can result in very large log files. 
+	       </p>
+		  </p>
+		    <br><br>	
+		
+ 
+ 		  <!-- Examples -->
+		
+		  <h2>6. Examples<a name="EXAMPLES"></a></h2><br>
+		  
+		  <p>The following are various command line examples used to run PriorityPruner:</p><br>
+		  
+		  <p>Basic example with only the required arguments:</p><br>
+		  <p class="codebox">java -jar PriorityPruner.jar --tfile my_data --snp_table my_snp_info.txt \ <br>&nbsp;&nbsp;&nbsp; --r2 0.8 --out test
+		  </p><br>
+		  
+		  <p>Adding two surrogates for SNPs with p<0.001: </p><br>
+		  <p class="codebox">java -jar PriorityPruner.jar --tfile my_data --snp_table my_snp_info.txt \ <br>&nbsp;&nbsp;&nbsp; --r2 0.8 --out test --st 0.001 1
+		  </p><br>
+		    
+		  <p>Adding two surrogates for SNPs with p<0.001, weighting surrogates by a custom column named 'isExonic': </p><br>
+		  <p class="codebox">java -jar PriorityPruner.jar --tfile my_data --snp_table my_snp_info.txt \ <br>&nbsp;&nbsp;&nbsp; --r2 0.8 --out test --st 0.001 1 --metric isExonic 1
+		  </p><br>
+		  
+		    
+      </div>
+    </div>
+    <div id="footer">
+      <p>Copyright &copy; Christopher K. Edlund, Malin Anker, Fredrick R. Schumacher, W. James Gauderman, David V. Conti
+      	<br>University of Southern California<br>Los Angeles, CA  90033, USA
+      	</p>
+    </div>
+  </div>
+  </body>
+</html>
