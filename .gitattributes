@@ -1,2 +1,0 @@
-#set all .txt files to have LF line endings (so that regression tests work)
-*.results text eol=lf
