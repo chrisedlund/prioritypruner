@@ -1,0 +1,137 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <meta charset="utf-8">
+  <meta name="description" content="Software for priority-based linkage disequilbrium pruning" />
+  <meta name="keywords" content="pruning, LD, linkage disequilibrium, bioinformatics, tagging, tagSNP, pruner, GWAS, LD pruning, LD pruner, software, SNP, linkage disequilbrium pruner" />
+  <meta name="author" content="Christopher K. Edlund" />
+    <meta http-equiv="content-type" content="text/html; charset=windows-1252" />
+    <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Tangerine&amp;v1" />
+    <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Yanone+Kaffeesatz" />
+    <link rel="stylesheet" type="text/css" href="style/style.css" />
+	  <script language="JavaScript" type="text/javascript" src="js/spamguard.js"></script>
+    <title>PriorityPruner</title>
+
+  </head>
+
+<body>
+  <div id="main">
+    <div id="header">
+      <div id="logo">
+        <h1>Priority<a href="#">Pruner</a></h1>
+      </div>
+      <div id="menubar">
+        <ul id="menu">
+          <!-- put class="current" in the li tag for the selected page - to highlight which page you're on -->
+          <li class="current"><a href="index.html">Home</a></li>
+          <li><a href="documentation.html">Documentation</a></li>
+          <li><a href="downloads.html">Downloads</a></li>
+        </ul>
+      </div>
+    </div>
+    <div id="site_content">
+      <div id="sidebar_container">
+        
+        <div class="sidebar">
+        <!-- insert your sidebar items here -->
+        <h3>Updates</h3>
+
+        <h5>9/7/2016</h5>
+        <p>PriorityPruner version 0.1.4 released, includes bug fix for SNP call rate calculation. <br /><a href="downloads.html">Download here</a></p>
+        	<br>
+        		
+        <h5>5/17/2016</h5>
+        <p>PriorityPruner version 0.1.3 released, source code now uses Maven.</p>
+        	<br>
+        <h5>5/17/2016</h5>
+        
+        <p>Algorithm description added to online documentation.</p>
+        </div>
+
+        <div class="sidebar">
+          <h3>Sourceforge</h3>
+          <p>PriorityPruner source code is hosted at <a href="http://sourceforge.net/projects/prioritypruner/">Sourceforge</a>.</p>
+        </div>
+
+      </div>
+      <div id="content">
+        <!-- insert the page content here -->
+        <h1>Welcome to PriorityPruner</h1>
+        
+        
+        	<h2>Overview</h2><br>
+        	<p><b>PriorityPruner</b> is a software program which can prune a list of SNPs that are in high linkage disequilibrium (LD) with other SNPs in the list,
+		  while preferentially keeping/selecting SNPs of higher priority (e.g., the most significant SNPs in a genome-wide association study). </p><br>
+          <p>Input:
+        	
+		   	 <ol>
+			   <li> A genotype dataset (e.g., PLINK format)</li>
+			   <li> A table of SNPs annotated with p-values or other prioritization criteria
+		  	 </ol>
+			
+			Output:
+		   	 <ol>
+			   <li> A table of SNPs with columns indicating if the SNP is selected and/or tagged by a selected SNP
+		  	 </ol>
+			 
+			    </p>
+         <p>  
+		  PriorityPruner iterates over the entire list of inputted SNPs, in order of decending priority (e.g., lowest to highest p-value), 
+		  to select LD-independent SNPs according to user-defined thesholds. 
+		  </p><br>
+          <p>
+		  The software allows users to customize the pruning in several ways:<br><br>
+		  	  <ul>
+		  	 <li> Define multiple <i>r</i><sup>2</sup> thresholds based on p-value </li> 	
+			   <li> Select variable number of surrogate SNPs based on p-value </li>
+			   <li> Weight surrogate SNP selection by multiple custom columns in the SNP Input Table</li>
+			   <li> Force-select a set of SNPs</li>
+			   <li> Filter SNPs by MAF, call rate, and design score</li>
+			   <li> Filter defined or random samples to reduce LD calculation burden</li>
+		  	 </ul>
+		  
+          </p>
+          <p>PriorityPruner consists of a Java JAR file and can be run using the command line in Windows, Mac, Linux, or any other platform that supports Java.
+          </p><br>
+          
+          <p>
+             <h2>Documentation</h2><br>
+          	Documentation and usage examples can be found on the <a href="documentation.html">documentation</a> page.
+          </p><br>
+          
+          <p>
+             <h2>Downloads</h2><br>
+          	To obtain PriorityPruner, please visit the <a href="downloads.html">downloads</a> page.
+          </p>
+          <br>
+          <p>
+             <h2>Authors</h2><br>
+          	PriorityPruner was developed by the following authors at the University of Southern California:<br><br>
+          	<ul>
+          		<li><a href="javascript:spamGuard('cedlund','usc','edu')">Christopher K. Edlund</a></li>
+          		<li>Malin Anker</li>
+          		<li>Fredrick R. Schumacher</li>
+          		<li>W. James Gauderman</li>
+          		<li>David V. Conti</li>
+          	</ul>	
+          </p>
+          <p>
+          <h2>Citing PriorityPruner</h2>
+          	<br>
+         	 We are currenlty working on a manuscript which we hope to publish soon. In the meantime, we would appreciate if you cite the version of PriorityPruner you used and this website.
+          </p><br>
+          <p>
+          <h2>License</h2>
+          	<br>
+         	 PriorityPruner is released under the <a href="http://opensource.org/licenses/MIT">MIT License</a>.
+          </p><br>	
+      </div>
+    </div>
+    <div id="footer">
+      <p>Copyright &copy; Christopher K. Edlund, Malin Anker, Fredrick R. Schumacher, W. James Gauderman, David V. Conti
+      	<br>University of Southern California<br>Los Angeles, CA  90033, USA
+      	</p>
+    </div>
+  </div>
+</body>
+</html>
