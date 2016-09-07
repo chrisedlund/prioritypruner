@@ -8,7 +8,7 @@ Usage
 
 Documentation
 -------------
-Documentation is available at [prioritypruner.sourceforge.net/documentation.html](prioritypruner.sourceforge.net/documentation.html)
+Documentation is available at [chrisedlund.github.io/prioritypruner/documentation.html](chrisedlund.github.io/prioritypruner/documentation.html)
 
 
 Building from source code
@@ -18,7 +18,7 @@ Building from source code
 
 2) Clone PriorityPruner code repository:
 
-`git clone git://git.code.sf.net/p/prioritypruner/code prioritypruner-code`
+`git clone https://github.com/chrisedlund/prioritypruner.git prioritypruner`
 
 3) Install [JDK](http://www.oracle.com/technetwork/java/javase/downloads/index.html) version 8 or higher, and make sure `$JAVA_HOME` points to this installation
 
