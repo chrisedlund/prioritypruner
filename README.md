@@ -8,7 +8,7 @@ Usage
 
 Documentation
 -------------
-Documentation is available at [chrisedlund.github.io/prioritypruner/documentation.html](chrisedlund.github.io/prioritypruner/documentation.html)
+Documentation is available at [https://chrisedlund.github.io/prioritypruner/documentation.html](https://chrisedlund.github.io/prioritypruner/documentation.html)
 
 
 Building from source code
